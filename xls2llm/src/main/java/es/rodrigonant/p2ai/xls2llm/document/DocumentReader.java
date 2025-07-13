@@ -6,6 +6,6 @@ import es.rodrigonant.p2ai.xls2llm.model.Request2LLM;
 
 public interface DocumentReader {
 
-	Request2LLM getDocument(File xmlFile);
+	Request2LLM getDocument(String xmlFile);
 
 }

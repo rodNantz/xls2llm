@@ -3,6 +3,7 @@ package es.rodrigonant.p2ai.xls2llm.document.impl;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,15 +32,16 @@ public class DocumentReaderXlsImpl implements DocumentReader {
 	
 	
 	@Override
-	public Request2LLM getDocument(File xlsFile) {
-		Request2LLM document;		
+	public Request2LLM getDocument(String xlsFile) {
+		Request2LLM document;
+		Workbook workbook = null;
 		
 		try {
 			Question q = new Question();
 			List<String> nextLines = new ArrayList<>();
 			
-			FileInputStream file = new FileInputStream(xlsFile);
-			Workbook workbook = new XSSFWorkbook(file);
+			InputStream file = getFileFromResourceAsStream(xlsFile);
+			workbook = new XSSFWorkbook(file);
 			
 			Sheet sheet = workbook.getSheetAt(0);
 
@@ -57,14 +59,22 @@ public class DocumentReaderXlsImpl implements DocumentReader {
 			document = new Request2LLM(q, 10);
 		} catch (IOException e) {
 			throw new InputException(e);
-		}
+		} finally {
+			try {
+				workbook.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}	
 		
 		return document;
 	}
 	
 	private boolean isHeaderRow(Row row) {
 		// col B == idx 1
-		return row.getCell(1).getStringCellValue().equals("0");
+		if (row.getCell(1).getCellType() == CellType.NUMERIC)
+			return row.getCell(1).getNumericCellValue() == 0d;
+		return false;
 	}
 	
 	private boolean isNextLinesRow(Row row) {
@@ -84,5 +94,19 @@ public class DocumentReaderXlsImpl implements DocumentReader {
 	private String getContentOnNextLine(Row row) {
 		return row.getCell(NEXTLINES_COL).getStringCellValue();
 	}
+	
+	
+	private InputStream getFileFromResourceAsStream(String fileName) {
+        // The class loader that loaded the class
+        ClassLoader classLoader = getClass().getClassLoader();
+        InputStream inputStream = classLoader.getResourceAsStream(fileName);
+
+        // the stream holding the file content
+        if (inputStream == null) {
+            throw new IllegalArgumentException("file not found! " + fileName);
+        } else {
+            return inputStream;
+        }
+    }
 	
 }

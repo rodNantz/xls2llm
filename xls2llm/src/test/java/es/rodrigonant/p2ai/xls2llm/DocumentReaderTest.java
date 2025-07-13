@@ -23,15 +23,15 @@ class DocumentReaderTest {
 
 	@Autowired
 	DocumentReader dr;
-	String xmlFilePath = "";
+	String xmlFilePath = "xls/test1.xlsx";
 	
 	@Autowired
 	LLMService service;
 	
 	@Test
 	void xlsDocTest() {
-		File xmlFile = new File(xmlFilePath);
-		Request2LLM req = dr.getDocument(xmlFile);
+		//File xmlFile = new File(xmlFilePath);
+		Request2LLM req = dr.getDocument(xmlFilePath);
 		assertNotNull(req);
 		
 		List<String[]> mQst = req.question().getRowQuestion();
