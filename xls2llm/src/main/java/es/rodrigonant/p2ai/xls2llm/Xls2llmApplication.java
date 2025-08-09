@@ -8,6 +8,7 @@ public class Xls2llmApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(Xls2llmApplication.class, args);
+		//SpringApplication.run(DocumentRunnerV1.class, args);
 	}
 
 }

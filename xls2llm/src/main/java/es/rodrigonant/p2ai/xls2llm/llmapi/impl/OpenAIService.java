@@ -3,6 +3,7 @@ package es.rodrigonant.p2ai.xls2llm.llmapi.impl;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -14,16 +15,16 @@ import com.openai.models.chat.completions.ChatCompletionCreateParams;
 import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseCreateParams;
 
+import es.rodrigonant.p2ai.xls2llm.model.Question;
 import es.rodrigonant.p2ai.xls2llm.model.Request2LLM;
 import jakarta.annotation.PostConstruct;
 
 @Service
-public class OpenAIService implements es.rodrigonant.p2ai.xls2llm.llmapi.LLMService {
-
-	OpenAIClient client;
+@Qualifier("gpt-service")
+public class OpenAIService extends BaseService implements es.rodrigonant.p2ai.xls2llm.llmapi.LLMService {
 	
 	@Value( "${llm.openai.key}" )
-	private String apiKey;
+	protected String apiKey;
 	
 	@Value( "${llm.openai.org}" )
 	protected String orgId;
@@ -32,28 +33,16 @@ public class OpenAIService implements es.rodrigonant.p2ai.xls2llm.llmapi.LLMServ
 	protected String projId;
 	
 	@Value( "${llm.openai.url}" )
-	protected String baseUrl;
-	
-	@PostConstruct
-	public void setup() {
+	protected String url;
+
+	public String setupProperties() {
 		client = OpenAIOkHttpClient.builder()
-			    .fromEnv()
 			    .apiKey(apiKey)
 			    .organization(orgId)
 			    .project(projId)
-			    .baseUrl(baseUrl)
+			    .baseUrl(url)
 			    .build();
-	}
-
-	@Override
-	public ChatCompletion promptCompletion(Request2LLM req) {
-		ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
-		        .addUserMessage(req.question().toString())
-		        .model(ChatModel.GPT_4_1)
-		        .build();
-		
-		ChatCompletion completion = client.chat().completions().create(params);
-		return completion;
+		return url;
 	}
 	
 }
