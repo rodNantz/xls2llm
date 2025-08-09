@@ -25,21 +25,26 @@ public class Question {
 	// cada linha do header (idx==0) tem várias colunas
 	private List<String[]> rowZeroQuestion; 
 	// linhas idx > 0
-	private String[] nextLines;
+	private List<String> nextLines;
 	
 	public Question() {
 		rowZeroQuestion = new ArrayList<>();
+		nextLines = new ArrayList<>();
 	}
 
 	
-	public String[] getNextLines() {
+	public List<String> getNextLines() {
 		return nextLines;
 	}
 
-	public void setNextLines(String[] nextLines) {
+	public void setNextLines(List<String> nextLines) {
 		this.nextLines = nextLines;
 	}
 
+	public void addNextLine(String rowLine) {
+		this.nextLines.add(rowLine);
+	}
+	
 	public List<String[]> getRowQuestion() {
 		return rowZeroQuestion;
 	}
@@ -52,23 +57,58 @@ public class Question {
 		this.rowZeroQuestion.add(questions);
 	}
 	
+	public List<Question> split(int batchSize){
+		List<Question> qsts = new ArrayList<Question>();
+		if (nextLines != null) {
+			int tL = 0;
+			int bL = 0;
+			Question q = null;
+			for (String nLine: nextLines) {
+				if (bL == 0) {
+					q = new Question();
+					q.setRowQuestion(rowZeroQuestion);
+				}
+				q.nextLines.add(nLine);
+				bL++;
+				tL++;
+				if (bL == batchSize || tL == nextLines.size()) {
+					bL = 0;
+					qsts.add(q);
+				}
+			}
+		} else {
+			qsts.add(this);
+		}
+		
+		return qsts;
+	}
+	
 	@Override
 	public String toString() {
+		return toString(null);
+	}	
+	
+	public String toString(Integer lineLimit) {
 		StringBuilder sb = new StringBuilder();
 		for (String[] qLine: rowZeroQuestion) {
 			for (String col : qLine) {
 				sb.append(col);
-				sb.append("\n\n");
+				sb.append("\n");
 			}
-			sb.append("\n\n\n");
+			sb.append("\n\n");
 		}
 		
-		for (String nLine: nextLines) {
-			sb.append(nLine);
-			sb.append("\n\n");
+		int i = 1;
+		if (nextLines != null) {
+			for (String nLine: nextLines) {
+				if (lineLimit != null && i > lineLimit)
+					break;
+				sb.append(nLine);
+				sb.append("\n\n");
+				i++;
+			}
 		}
 		
 		return sb.toString();
 	}
-	
 }
