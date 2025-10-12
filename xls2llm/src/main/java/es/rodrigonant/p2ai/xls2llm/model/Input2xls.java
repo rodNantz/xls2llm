@@ -13,7 +13,7 @@ public class Input2xls {
 		return content.keys();		
 	}
 	
-	public Enumeration<Integer> getColIndexes(Integer l) {
+	public Enumeration<Integer> getColIndexes(int l) {
 		return content.get(l).keys();		
 	}
 	

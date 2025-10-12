@@ -15,6 +15,9 @@ import es.rodrigonant.p2ai.xls2llm.document.DocumentManager;
 import es.rodrigonant.p2ai.xls2llm.llmapi.LLMService;
 import es.rodrigonant.p2ai.xls2llm.model.Input2xls;
 import es.rodrigonant.p2ai.xls2llm.model.Request2LLM;
+import es.rodrigonant.p2ai.xls2llm.model.classification.CategorizationResponse;
+import es.rodrigonant.p2ai.xls2llm.model.classification.CommentRow;
+import es.rodrigonant.p2ai.xls2llm.model.classification.CategoryCol;
 
 @SpringBootTest
 public class E2ETest {
@@ -35,33 +38,36 @@ public class E2ETest {
 	@Test
 	public void e2eTest() {
 		int limit = 10;
-		
 		Request2LLM req = dr.getDocument(xmlFilePath, limit);
-		
-		List<String[]> mQst = req.question().getRowQuestion();
+		List<String[]> sysQsts = req.question().getRowZeroSystemQuestions();
+		String mQst = req.question().getRowZeroQuestion();
 		List<String> nxtQsts = req.question().getNextLines();
-				
-		System.out.println("mQst.get(0): "+ Arrays.asList(mQst.get(0)));
-		
+		System.out.println("mQst: "+ mQst);
+		System.out.println("sysQsts.get(0): "+ Arrays.asList(sysQsts.get(0)) +" \n ... get("+ (sysQsts.size()-1) +"): "
+										 + Arrays.asList(sysQsts.get(sysQsts.size())));
 		System.out.println("nxtQsts: "+ nxtQsts);
-		
 		// call
-
-		//LLMService service = factory.getLLMService();
-		
-		List<ChatCompletion> response = llmService.promptCompletion(req);
-		System.out.println(response.get(0).toString());
-		
+		List<CategorizationResponse> responses = llmService.promptCategorization(req);
+		System.out.println(responses.get(0).toString());
 		// write to xlsx
-
+		Input2xls input = new Input2xls();
 		int row = 0;
-		int col = 0;
-		for (Choice choice : response.get(0).choices()) {
-			System.out.println(choice.message().content());
-			Input2xls input = new Input2xls();
-			input.putContent(row, col, choice.message().content().get());
-			dr.writeDocument(xmlFilePath, xmlChangeFilePath, input);
+		for (CategorizationResponse response : responses) {
+			for (CommentRow comment : response.getComments()) {
+				long comId = comment.getCommentId();
+				int col = 0;
+				for (CategoryCol category : comment.getCategories()) {
+					String value = String.format("%s | %d | %s", category.getCategoryName(), 
+							//category.getEvaluation().getCode(), category.getEvaluation().getDescription());
+							category.getEvaluation().name());
+					System.out.println("Writing row "+ comId +": row "+ row +", col "+ col +": "+ value);
+					input.putContent(row, col, value);
+					col++;
+				}
+				row++;
+			}
 		}
+		dr.writeDocument(xmlFilePath, xmlChangeFilePath, input);
 	}
 		
 }

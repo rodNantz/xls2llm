@@ -52,7 +52,7 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 		Request2LLM document;
 		Workbook workbook = null;
 		try {
-			Question q = new Question();
+			Question q = new Question(null);
 			List<String> nextLines = new ArrayList<>();
 			Answer a = new Answer();
 			// TODO extra dimension on nextAnswers
@@ -67,7 +67,11 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 				if (rowLimit != null && rowLimit < row.getRowNum())
 					break;
 				if (isHeaderRow(row)) {
-					q.addRowQuestion(getContentOnHeaderCols(row));
+					if (isHeaderContent(row, "S")) {
+						q.addRowZeroSystemQuestion(getContentOnHeaderColumns(row));
+					} else if (isHeaderContent(row, "Q")){
+						q.setRowZeroQuestion(getContentOnHeaderCol(row));
+					} 
 				} else if (isNextLinesRow(row)){
 					nextLines.add(getContentOnNextLine(row));
 					for (int c = wIniCol; c <= wFinalCol; c++) {
@@ -163,9 +167,14 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 	
 	private boolean isHeaderRow(Row row) {
 		// col B == idx 1
-		if (row.getCell(1).getCellType() == CellType.NUMERIC)
-			return row.getCell(1).getNumericCellValue() == 0d;
-		return false;
+		return row.getRowNum() >= HEADER_COL_INI && row.getRowNum() <= HEADER_COL_FIN;
+	}
+	
+	private boolean isHeaderContent(Row row, String systemOrUserQst) {
+		System.err.println(row.getCell(ID_COL));
+		return row.getCell(ID_COL).getCellType() == CellType.STRING &&
+			   row.getCell(ID_COL).getStringCellValue().equals(systemOrUserQst);
+		
 	}
 	
 	private boolean isNextLinesRow(Row row) {
@@ -174,12 +183,16 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 				row.getCell(1).getNumericCellValue() > 0);
 	}
 
-	private String[] getContentOnHeaderCols(Row row) {
+	private String[] getContentOnHeaderColumns(Row row) {
 		List<String> cols = new ArrayList<>();
 		for (int i = HEADER_COL_INI; i <= HEADER_COL_FIN; i++) {
 			cols.add( row.getCell(i).getStringCellValue() );
 		}
 		return cols.toArray(new String[0]);
+	}
+	
+	private String getContentOnHeaderCol(Row row) {
+		return row.getCell(HEADER_COL_INI).getStringCellValue();
 	}
 	
 	private String getContentOnNextLine(Row row) {

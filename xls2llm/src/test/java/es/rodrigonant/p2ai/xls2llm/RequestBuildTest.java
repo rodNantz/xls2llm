@@ -16,9 +16,10 @@ public class RequestBuildTest {
 
 	@Test
 	public void splitRequestTest() {
-		Question q = new Question();
-		final String Q_STR = "Olá, quão comuns são os nomes abaixo em países como o Brasil e Portugal, do mais comum ao menos comum?";
-		q.addRowQuestion(Q_STR);
+		final String Q_STR = "Quais são os nomes mais comuns?";
+		Question q = new Question(Q_STR);
+		final String Q_SYS_STR = "Quanto aos nomes apresentados, considerar países como o Brasil e Portugal, ordenado do mais comum ao menos comum";
+		q.addRowZeroSystemQuestion(Q_SYS_STR);
 		
 		List<String> nextLines = new ArrayList<>();
 		nextLines.addAll(List.of("Amanda, Alice, Rodrigo", "Vinicius, Gabriel, Lívia"));
@@ -30,8 +31,11 @@ public class RequestBuildTest {
 		for(Question qq : qsts) {
 			System.out.println(qq);
 		}
-		assertEquals(qsts.get(0).getRowQuestion().getFirst()[0], Q_STR);
-		assertEquals(qsts.get(1).getRowQuestion().getFirst()[0], Q_STR);
+		assertEquals(qsts.get(0).getRowZeroQuestion(), Q_STR);
+		assertEquals(qsts.get(1).getRowZeroQuestion(), Q_STR);
+		
+		assertEquals(qsts.get(0).getRowZeroSystemQuestions().getFirst()[0], Q_SYS_STR);
+		assertEquals(qsts.get(1).getRowZeroSystemQuestions().getFirst()[0], Q_SYS_STR);
 		
 		assertEquals(qsts.get(0).getNextLines().getFirst(), "Amanda, Alice, Rodrigo");
 		assertEquals(qsts.get(1).getNextLines().getFirst(), "Vinicius, Gabriel, Lívia");

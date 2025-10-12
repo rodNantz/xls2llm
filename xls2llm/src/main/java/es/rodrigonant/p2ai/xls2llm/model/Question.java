@@ -6,32 +6,41 @@ import java.util.List;
 /**
  * Question example:
  *
- * 0. rowQuestion: { 
- * 					 { "Para cada comentário, identifique se apresenta conteúdo contra (de ataque ou crítica) ao Nordeste [...]",
- * 				 	   "V1 [POS_NOR]: Nesta categoria, procura-se identificar o posicionamento dos comentaristas [...]",
- * 					   "V2 [...]"
- * 					 },
- *				 	 { "Os seguintes tweets:"
- *					 }
- * 			  	   }
- * nextLines: {
+ * rowSystemQuestions: [ 
+ * 					  "Para cada comentário, identifique se apresenta conteúdo contra (de ataque ou crítica) ao Nordeste [...]",
+ * 				 	  "V1 [POS_NOR]: Nesta categoria, procura-se identificar o posicionamento dos comentaristas [...]",
+ * 					  "V2 [...]"
+ * 			  	 	   ],
+ * mainQuestion: "Analise os seguntes tweets: ",
+ * nextLines: [
  * 				"eu sou do nordeste e sou [...]", 
  *				"Brasil, campeão mundial de geração de energia [...]"
- * 			  }
+ * 			  ]
  * 
  */
 public class Question {
 
 	// cada linha do header (idx==0) tem várias colunas
-	private List<String[]> rowZeroQuestion; 
+	private List<String[]> rowZeroSystemQuestions; 
+	private String rowZeroQuestion; 
 	// linhas idx > 0
 	private List<String> nextLines;
+
 	
-	public Question() {
-		rowZeroQuestion = new ArrayList<>();
+	public Question(String mainQuestion) {
+		setRowZeroSystemQuestions(new ArrayList<>());
+		rowZeroQuestion = mainQuestion;
 		nextLines = new ArrayList<>();
 	}
 
+	
+	public String getRowZeroQuestion() {
+		return rowZeroQuestion;
+	}
+
+	public void setRowZeroQuestion(String rowZeroQuestion) {
+		this.rowZeroQuestion = rowZeroQuestion;
+	}
 	
 	public List<String> getNextLines() {
 		return nextLines;
@@ -45,16 +54,16 @@ public class Question {
 		this.nextLines.add(rowLine);
 	}
 	
-	public List<String[]> getRowQuestion() {
-		return rowZeroQuestion;
+	public List<String[]> getRowZeroSystemQuestions() {
+		return rowZeroSystemQuestions;
 	}
 
-	public void setRowQuestion(List<String[]> rowQuestion) {
-		this.rowZeroQuestion = rowQuestion;
+	public void setRowZeroSystemQuestions(List<String[]> rowQuestion) {
+		this.rowZeroSystemQuestions = rowQuestion;
 	}
 	
-	public void addRowQuestion(String... questions) {
-		this.rowZeroQuestion.add(questions);
+	public void addRowZeroSystemQuestion(String... questions) {
+		this.rowZeroSystemQuestions.add(questions);
 	}
 	
 	public List<Question> split(int batchSize){
@@ -65,8 +74,8 @@ public class Question {
 			Question q = null;
 			for (String nLine: nextLines) {
 				if (bL == 0) {
-					q = new Question();
-					q.setRowQuestion(rowZeroQuestion);
+					q = new Question(this.rowZeroQuestion);
+					q.setRowZeroSystemQuestions(rowZeroSystemQuestions);
 				}
 				q.nextLines.add(nLine);
 				bL++;
@@ -85,18 +94,27 @@ public class Question {
 	
 	@Override
 	public String toString() {
-		return toString(null);
+		return toString(true);
 	}	
 	
-	public String toString(Integer lineLimit) {
+	public String toString(boolean includeMainQst) {
+		return toString(includeMainQst, null);
+	}
+	
+	public String toString(boolean includeMainQst, Integer lineLimit) {
 		StringBuilder sb = new StringBuilder();
-		for (String[] qLine: rowZeroQuestion) {
+		for (String[] qLine: rowZeroSystemQuestions) {
 			for (String col : qLine) {
 				sb.append(col);
 				sb.append("\n");
 			}
-			sb.append("\n\n");
+			sb.append("\n");
 		}
+		
+		if (includeMainQst) {
+			sb.append(rowZeroQuestion);
+		}
+		sb.append("\n\n");
 		
 		int i = 1;
 		if (nextLines != null) {
@@ -111,4 +129,5 @@ public class Question {
 		
 		return sb.toString();
 	}
+
 }
