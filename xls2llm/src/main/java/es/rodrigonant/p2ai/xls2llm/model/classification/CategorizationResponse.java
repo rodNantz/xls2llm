@@ -14,7 +14,7 @@ public class CategorizationResponse {
 	
 	private List<CommentRow> comments;
 
-	@JsonProperty 
+	@JsonProperty("comments")
 	public List<CommentRow> getComments() {
 		return comments;
 	}

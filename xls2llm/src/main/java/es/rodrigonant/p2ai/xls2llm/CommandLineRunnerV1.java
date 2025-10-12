@@ -74,7 +74,7 @@ public class CommandLineRunnerV1 implements CommandLineRunner {
                     String value = String.format("-> %s", 
                     		//category.getCategoryName(), 
                     		//category.getEvaluation().getCode(), category.getEvaluation().getDescription());
-                    		category.getEvaluation().name());
+                    		category.getEvaluation());
                     System.out.println(""+ id + " -> " + value);
                     input.putContent(rowIdx, colIdx, value);
                     colIdx++;

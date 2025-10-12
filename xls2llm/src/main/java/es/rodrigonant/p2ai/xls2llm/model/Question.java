@@ -22,24 +22,23 @@ public class Question {
 
 	// cada linha do header (idx==0) tem várias colunas
 	private List<String[]> rowZeroSystemQuestions; 
-	private String rowZeroQuestion; 
+	private String rowZeroUserQuestion; 
 	// linhas idx > 0
 	private List<String> nextLines;
 
 	
 	public Question(String mainQuestion) {
 		setRowZeroSystemQuestions(new ArrayList<>());
-		rowZeroQuestion = mainQuestion;
+		rowZeroUserQuestion = mainQuestion;
 		nextLines = new ArrayList<>();
 	}
 
 	
-	public String getRowZeroQuestion() {
-		return rowZeroQuestion;
-	}
-
-	public void setRowZeroQuestion(String rowZeroQuestion) {
-		this.rowZeroQuestion = rowZeroQuestion;
+	public void setAddQuestion(char code, String rowZeroQuestion) {
+		if (code == 'S')
+			addRowZeroSystemQuestion(rowZeroQuestion);
+		else
+			this.rowZeroUserQuestion = rowZeroQuestion;
 	}
 	
 	public List<String> getNextLines() {
@@ -52,6 +51,14 @@ public class Question {
 
 	public void addNextLine(String rowLine) {
 		this.nextLines.add(rowLine);
+	}
+	
+	public String getRowZeroUserQuestion() {
+		return rowZeroUserQuestion;
+	}
+
+	public void setRowZeroUserQuestion(String rowZeroUserQuestion) {
+		this.rowZeroUserQuestion = rowZeroUserQuestion;
 	}
 	
 	public List<String[]> getRowZeroSystemQuestions() {
@@ -74,7 +81,7 @@ public class Question {
 			Question q = null;
 			for (String nLine: nextLines) {
 				if (bL == 0) {
-					q = new Question(this.rowZeroQuestion);
+					q = new Question(this.rowZeroUserQuestion);
 					q.setRowZeroSystemQuestions(rowZeroSystemQuestions);
 				}
 				q.nextLines.add(nLine);
@@ -112,7 +119,7 @@ public class Question {
 		}
 		
 		if (includeMainQst) {
-			sb.append(rowZeroQuestion);
+			sb.append(rowZeroUserQuestion);
 		}
 		sb.append("\n\n");
 		

@@ -36,11 +36,13 @@ import es.rodrigonant.p2ai.xls2llm.model.handling.InputException;
 public class DocumentMgrXlsImpl implements DocumentManager {
 
 	public final int ID_COL = 1;
-	public final int HEADER_COL_INI = 2;
+	public final int HEADER_ROW_INI = 1;
+	public final int HEADER_ROW_MAX = 5;
+	public final int HEADER_COL_INI = 1;
 	//public final int HEADER_COL_FIN = 8;
-	public final int HEADER_COL_FIN = 3;	// only cat 1 for testing
-	public final int NEXTLINES_ROW_INI = 3;
-	public final int NEXTLINES_COL = HEADER_COL_INI;
+	public final int HEADER_COL_FIN = 2;	// only cat 1 for testing
+//	public final int NEXTLINES_ROW_INI = 3;
+	public final int NEXTLINES_COL = HEADER_COL_INI+1;
 	
 	int wIniLine = ExcelConstants.INITIAL_LINE; 
 	int wIniCol = ExcelConstants.INITIAL_COL;
@@ -66,13 +68,13 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 			for (Row row : sheet) {
 				if (rowLimit != null && rowLimit < row.getRowNum())
 					break;
-				if (isHeaderRow(row)) {
-					if (isHeaderContent(row, "S")) {
-						q.addRowZeroSystemQuestion(getContentOnHeaderColumns(row));
-					} else if (isHeaderContent(row, "Q")){
-						q.setRowZeroQuestion(getContentOnHeaderCol(row));
-					} 
+				
+				if (isHeaderContent(row, "S")) {
+					q.addRowZeroSystemQuestion(getContentOnHeaderColumns(row));
+				} else if (isHeaderContent(row, "Q")){
+					q.setRowZeroUserQuestion(getContentOnHeaderCol(row));
 				} else if (isNextLinesRow(row)){
+					debug(row.toString());
 					nextLines.add(getContentOnNextLine(row));
 					for (int c = wIniCol; c <= wFinalCol; c++) {
 						nextAnswers.add(row.getCell(c+wIniCol).getStringCellValue());
@@ -97,6 +99,12 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 		return document;
 	}
 	
+
+	private void debug(String string) {
+		// TODO Auto-generated method stub
+		System.out.println("DEBUG "+ string);
+	}
+
 
 	public void writeDocumentMin(String xlsFile, String xlsFileToChg, Input2xls input) {
 		InputStream fis = getFileFromResourceAsStream(xlsFile);
@@ -179,8 +187,8 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 	
 	private boolean isNextLinesRow(Row row) {
 		// col B == idx 1
-		return (row.getCell(1).getCellType() == CellType.NUMERIC &&
-				row.getCell(1).getNumericCellValue() > 0);
+		return (row.getCell(HEADER_COL_INI).getCellType() == CellType.NUMERIC &&
+				row.getCell(HEADER_COL_INI).getNumericCellValue() > 0);
 	}
 
 	private String[] getContentOnHeaderColumns(Row row) {

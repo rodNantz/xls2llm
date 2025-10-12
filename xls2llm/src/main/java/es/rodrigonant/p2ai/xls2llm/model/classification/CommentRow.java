@@ -3,6 +3,7 @@ package es.rodrigonant.p2ai.xls2llm.model.classification;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import es.rodrigonant.p2ai.xls2llm.model.V1alt;
 
 public class CommentRow {
 
@@ -16,6 +17,7 @@ public class CommentRow {
 	public void setCommentId(long commentId) {
 		this.commentId = commentId;
 	}
+	
 	@JsonProperty
 	public List<CategoryCol> getCategories() {
 		return categories;

@@ -19,8 +19,7 @@ import es.rodrigonant.p2ai.xls2llm.model.classification.CategorizationResponse;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CommentRow;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategoryCol;
 
-@SpringBootTest
-public class E2ETest {
+public class E2ETest extends GenericTest {
 
 	@Autowired
 	DocumentManager dr;
@@ -30,7 +29,7 @@ public class E2ETest {
 	private LLMService llmService;
 	
 	@Autowired
-	public E2ETest(@Qualifier("test-service") LLMService service) {
+	public E2ETest(@Qualifier("gpt-service") LLMService service) {
 		this.llmService = service;
 	}
 	
@@ -40,11 +39,11 @@ public class E2ETest {
 		int limit = 10;
 		Request2LLM req = dr.getDocument(xmlFilePath, limit);
 		List<String[]> sysQsts = req.question().getRowZeroSystemQuestions();
-		String mQst = req.question().getRowZeroQuestion();
+		String mQst = req.question().getRowZeroUserQuestion();
 		List<String> nxtQsts = req.question().getNextLines();
 		System.out.println("mQst: "+ mQst);
 		System.out.println("sysQsts.get(0): "+ Arrays.asList(sysQsts.get(0)) +" \n ... get("+ (sysQsts.size()-1) +"): "
-										 + Arrays.asList(sysQsts.get(sysQsts.size())));
+										 + Arrays.asList(sysQsts.get(sysQsts.size()-1)));
 		System.out.println("nxtQsts: "+ nxtQsts);
 		// call
 		List<CategorizationResponse> responses = llmService.promptCategorization(req);
@@ -57,9 +56,9 @@ public class E2ETest {
 				long comId = comment.getCommentId();
 				int col = 0;
 				for (CategoryCol category : comment.getCategories()) {
-					String value = String.format("%s | %d | %s", category.getCategoryName(), 
+					String value = String.format("%s", //category.getCategoryName(), 
 							//category.getEvaluation().getCode(), category.getEvaluation().getDescription());
-							category.getEvaluation().name());
+							category.toString());
 					System.out.println("Writing row "+ comId +": row "+ row +", col "+ col +": "+ value);
 					input.putContent(row, col, value);
 					col++;

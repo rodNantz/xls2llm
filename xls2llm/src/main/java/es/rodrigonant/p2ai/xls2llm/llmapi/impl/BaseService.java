@@ -59,7 +59,7 @@ public abstract class BaseService implements LLMService {
 		List<CategorizationResponse> catResponses = new ArrayList<>();
 		
 		for (Question q : qsts) {
-			StructuredChatCompletion<CategorizationResponse> sCC = categorizationRequest(q.getRowZeroQuestion(), q.toString(false));
+			StructuredChatCompletion<CategorizationResponse> sCC = categorizationRequest(q.getRowZeroUserQuestion(), q.toString(false));
 			sCC.choices().stream()
 		        .flatMap(choice -> choice.message().content().stream())
 		        .forEach(catResponses::add);

@@ -20,13 +20,13 @@ import es.rodrigonant.p2ai.xls2llm.model.classification.CategoryCol;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CommentRow;
 
 @SpringBootTest
-class OpenAITest {
+class OpenAITest extends GenericTest {
 
 	// test-service / gpt-service
 	private LLMService service;
 	
 	@Autowired
-	public OpenAITest(@Qualifier("test-service") LLMService service) {
+	public OpenAITest(@Qualifier("gpt-service") LLMService service) {
 		this.service = service;
 	}
 	
