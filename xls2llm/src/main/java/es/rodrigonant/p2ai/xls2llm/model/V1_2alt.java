@@ -14,7 +14,8 @@ public enum V1_2alt implements AlternativeI {
 	public String description;
 	
 	V1_2alt(String code, String description) {
-		this.code = code;
+		// Validate code using Code class, but store as String
+		this.code = new Code(code).toString();
 		this.description = description;
 	}
 	

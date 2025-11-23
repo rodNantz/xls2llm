@@ -12,9 +12,9 @@ public class Alternative {
 	
 	
 	private Alternative(String code, String description) {
-		this.setCode(code);
+		// Validate code using Code class, but store as String
+		this.setCode(new Code(code).toString());
 		this.setDescription(description);
-		
 	}
 	
 	// getters & setters	
@@ -22,7 +22,11 @@ public class Alternative {
 		return code;
 	}
 	public void setCode(String code) {
-		this.code = String.valueOf(code);
+		// Validate before setting
+		this.code = new Code(code).toString();
+	}
+	public void setCode(Code code) {
+		this.code = code.toString();
 	}
 	public String getDescription() {
 		return description;

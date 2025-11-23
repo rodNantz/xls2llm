@@ -31,9 +31,7 @@ import es.rodrigonant.p2ai.xls2llm.model.classification.CategoryCol;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CommentRow;
 import es.rodrigonant.p2ai.xls2llm.model.classification.EvaluationWrapper;
 
-@SpringBootTest
-@ActiveProfiles("test")
-class DocumentManagerTest {
+class DocumentManagerTest extends GenericTest {
 
 	@Autowired
 	DocumentManager dr;
@@ -46,7 +44,7 @@ class DocumentManagerTest {
 		assertNotNull(req);
 		
 		List<String[]> sysQst = req.question().getRowZeroSystemQuestions();
-		String mQst = req.question().getRowZeroQuestion();
+		String mQst = req.question().getRowZeroUserQuestion();
 		List<String> nxtQsts = req.question().getNextLines();
 				
 		assertNotNull(mQst);
@@ -74,9 +72,10 @@ class DocumentManagerTest {
 				long comId = comment.getCommentId();
 				int col = 0;
 				for (CategoryCol category : comment.getCategories()) {
-					String value = String.format("%s | %s", category.getCategory(), 
-							category.evaluationString());
+					String value = String.format("%s | %s", category.getCode(), 
+							category.toString());
 					System.out.println("Writing row "+ comId +": row "+ row +", col "+ col +": "+ value);
+					// código para célula
 					input.putContent(row, col, value);
 					col++;
 				}
@@ -100,19 +99,9 @@ class DocumentManagerTest {
 	
 	private List<CategorizationResponse> createMockResponses() {
 		// Create Category objects
-		CategoryCol cat1 = new CategoryCol();
-		cat1.setCategory("1");
-//		cat1.setCategory(Category.V1_POS_NOR);
-		cat1.setEvaluation(new EvaluationWrapper(V1alt._00_CONTRA_CRITICA_ATAQUE));
-//		cat1.setCode(Category.V1_POS_NOR.getCode());
-//		cat1.setCatDescription("Contra/Crítica/Ataque ao Nordeste");
+		CategoryCol cat1 = CategoryCol.fromV1alt(1, V1alt._00_CONTRA_CRITICA_ATAQUE);
 
-		CategoryCol cat2 = new CategoryCol();
-		cat2.setCategory("1.1");
-//		cat2.setCategory(Category.V1_1_AC_DOM);
-		cat2.setEvaluation(new EvaluationWrapper(V1_1alt._02_ECONOMICO_OU_RECURSOS_MATERIAIS));
-//		cat2.setCode(Category.V1_POS_NOR.get);
-//		cat2.setCatDescription("Favorável/defesa do Nordeste");
+		CategoryCol cat2 = CategoryCol.fromV1_1alt(1.1, V1_1alt._02_ECONOMICO_OU_RECURSOS_MATERIAIS);
 
 		// Add categories to a list
 		List<CategoryCol> categories = new ArrayList<>();
@@ -120,9 +109,9 @@ class DocumentManagerTest {
 		categories.add(cat2);
 
 		// Example usage of code/description
-		System.out.println("cat1 eval code: " + cat1.getEvaluation());
+		System.out.println("cat1 eval code: " + cat1.toString());
 //		System.out.println("cat1 eval description: " + cat1.getEvaluation().getDescription());
-		System.out.println("cat2 eval code: " + cat2.getEvaluation());
+		System.out.println("cat2 eval code: " + cat2.toString());
 //		System.out.println("cat2 eval code: " + cat2.getEvaluation().getCode());
 //		System.out.println("cat2 eval description: " + cat2.getEvaluation().getDescription());
 

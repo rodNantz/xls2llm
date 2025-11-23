@@ -23,7 +23,7 @@ import es.rodrigonant.p2ai.xls2llm.model.classification.CategorizationResponse;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CommentRow;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategoryCol;
 
-@Component
+// disabled @Component
 @Profile("!test")
 public class CommandLineRunnerV1 implements CommandLineRunner {
 
@@ -45,7 +45,7 @@ public class CommandLineRunnerV1 implements CommandLineRunner {
         // Read document
         Request2LLM req = dr.getDocument(xmlFilePath, limit);
         List<String[]> sysQsts = req.question().getRowZeroSystemQuestions();
-        String mQst = req.question().getRowZeroQuestion();
+        String mQst = req.question().getRowZeroUserQuestion();
         List<String> nxtQsts = req.question().getNextLines();
 
         System.out.println("Main Question: " + mQst);
@@ -74,7 +74,7 @@ public class CommandLineRunnerV1 implements CommandLineRunner {
                     String value = String.format("-> %s", 
                     		//category.getCategoryName(), 
                     		//category.getEvaluation().getCode(), category.getEvaluation().getDescription());
-                    		category.getEvaluation());
+                    		category.toString());
                     System.out.println(""+ id + " -> " + value);
                     input.putContent(rowIdx, colIdx, value);
                     colIdx++;

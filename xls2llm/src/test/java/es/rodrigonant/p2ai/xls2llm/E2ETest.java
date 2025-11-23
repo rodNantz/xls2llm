@@ -1,5 +1,9 @@
 package es.rodrigonant.p2ai.xls2llm;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -23,13 +27,13 @@ public class E2ETest extends GenericTest {
 
 	@Autowired
 	DocumentManager dr;
-	String xmlFilePath = "xls/test1-simple.xlsx";
+	String xmlFilePath = 	   "xls/test1-simple.xlsx";
 	String xmlChangeFilePath = "src/test/resources/xls/test1-simple-copy.xlsx";
 	
 	private LLMService llmService;
 	
 	@Autowired
-	public E2ETest(@Qualifier("gpt-service") LLMService service) {
+	public E2ETest(@Qualifier("test-service") LLMService service) {
 		this.llmService = service;
 	}
 	
@@ -66,7 +70,19 @@ public class E2ETest extends GenericTest {
 				row++;
 			}
 		}
+		
 		dr.writeDocument(xmlFilePath, xmlChangeFilePath, input);
+		
+		File wFile = new File(xmlChangeFilePath);
+		assertTrue(wFile.exists());
+      
+        try {
+			Runtime.getRuntime().exec("explorer.exe /SELECT,\"" + wFile.getAbsolutePath() + "\"");
+			System.out.println("Opened file: " + wFile.getAbsolutePath());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
 	}
 		
 }

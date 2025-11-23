@@ -11,20 +11,14 @@ import es.rodrigonant.p2ai.xls2llm.model.V1_2alt;
 import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 
-public class CategorizationResponseSerializationTest {
+public class CategorizationResponseSerializationTest extends GenericTest {
     @Test
     public void testSerialization() throws Exception {
-        CategoryCol cat1 = new CategoryCol();
-        cat1.setCategory("1");
-        cat1.setEvaluation(new EvaluationWrapper(V1alt._00_CONTRA_CRITICA_ATAQUE));
+        CategoryCol cat1 = CategoryCol.fromV1alt(1, V1alt._00_CONTRA_CRITICA_ATAQUE);
 
-        CategoryCol cat2 = new CategoryCol();
-        cat2.setCategory("1.1");
-        cat2.setEvaluation(new EvaluationWrapper(V1_1alt._02_ECONOMICO_OU_RECURSOS_MATERIAIS));
+        CategoryCol cat2 = CategoryCol.fromV1_1alt(1.1, V1_1alt._02_ECONOMICO_OU_RECURSOS_MATERIAIS);
 
-        CategoryCol cat3 = new CategoryCol();
-        cat3.setCategory("1.2");
-        cat3.setEvaluation(new EvaluationWrapper(V1_2alt._01_EXALTACAO_A_LULA_PT));
+        CategoryCol cat3 = CategoryCol.fromV1_2alt(1.2, V1_2alt._01_EXALTACAO_A_LULA_PT);
 
         CommentRow commentRow = new CommentRow();
         commentRow.setCommentId(1L);

@@ -31,8 +31,8 @@ public class RequestBuildTest {
 		for(Question qq : qsts) {
 			System.out.println(qq);
 		}
-		assertEquals(qsts.get(0).getRowZeroQuestion(), Q_STR);
-		assertEquals(qsts.get(1).getRowZeroQuestion(), Q_STR);
+		assertEquals(qsts.get(0).getRowZeroUserQuestion(), Q_STR);
+		assertEquals(qsts.get(1).getRowZeroUserQuestion(), Q_STR);
 		
 		assertEquals(qsts.get(0).getRowZeroSystemQuestions().getFirst()[0], Q_SYS_STR);
 		assertEquals(qsts.get(1).getRowZeroSystemQuestions().getFirst()[0], Q_SYS_STR);

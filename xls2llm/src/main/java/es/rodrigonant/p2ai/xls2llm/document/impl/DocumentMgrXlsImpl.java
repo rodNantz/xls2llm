@@ -40,7 +40,7 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 	public final int HEADER_ROW_MAX = 5;
 	public final int HEADER_COL_INI = 1;
 	//public final int HEADER_COL_FIN = 8;
-	public final int HEADER_COL_FIN = 2;	// only cat 1 for testing
+	public final int HEADER_COL_FIN = 8;	// only cat 1 for testing
 //	public final int NEXTLINES_ROW_INI = 3;
 	public final int NEXTLINES_COL = HEADER_COL_INI+1;
 	
@@ -209,11 +209,18 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 	
 	
 	private InputStream getFileFromResourceAsStream(String fileName) {
-        // The class loader that loaded the class
+        // First, try as a file on the filesystem
+        File file = new File(fileName);
+        if (file.exists() && file.isFile()) {
+            try {
+                return new FileInputStream(file);
+            } catch (IOException e) {
+                throw new IllegalArgumentException("Cannot open file: " + fileName, e);
+            }
+        }
+        // Fallback: try as a classpath resource
         ClassLoader classLoader = getClass().getClassLoader();
         InputStream inputStream = classLoader.getResourceAsStream(fileName);
-
-        // the stream holding the file content
         if (inputStream == null) {
             throw new IllegalArgumentException("file not found! " + fileName);
         } else {
