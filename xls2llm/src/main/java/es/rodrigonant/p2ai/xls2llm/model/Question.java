@@ -21,15 +21,15 @@ import java.util.List;
 public class Question {
 
 	// cada linha do header (idx==0) tem várias colunas
-	private List<String[]> rowZeroSystemQuestions; 
-	private String rowZeroUserQuestion; 
+	private List<String[]> rowSystemQuestions; 
+	private String rowUserQuestion; 
 	// linhas idx > 0
 	private List<String> nextLines;
 
 	
 	public Question(String mainQuestion) {
 		setRowZeroSystemQuestions(new ArrayList<>());
-		rowZeroUserQuestion = mainQuestion;
+		rowUserQuestion = mainQuestion;
 		nextLines = new ArrayList<>();
 	}
 
@@ -38,7 +38,7 @@ public class Question {
 		if (code == 'S')
 			addRowZeroSystemQuestion(rowZeroQuestion);
 		else
-			this.rowZeroUserQuestion = rowZeroQuestion;
+			this.rowUserQuestion = rowZeroQuestion;
 	}
 	
 	public List<String> getNextLines() {
@@ -54,23 +54,23 @@ public class Question {
 	}
 	
 	public String getRowZeroUserQuestion() {
-		return rowZeroUserQuestion;
+		return rowUserQuestion;
 	}
 
 	public void setRowZeroUserQuestion(String rowZeroUserQuestion) {
-		this.rowZeroUserQuestion = rowZeroUserQuestion;
+		this.rowUserQuestion = rowZeroUserQuestion;
 	}
 	
 	public List<String[]> getRowZeroSystemQuestions() {
-		return rowZeroSystemQuestions;
+		return rowSystemQuestions;
 	}
 
 	public void setRowZeroSystemQuestions(List<String[]> rowQuestion) {
-		this.rowZeroSystemQuestions = rowQuestion;
+		this.rowSystemQuestions = rowQuestion;
 	}
 	
 	public void addRowZeroSystemQuestion(String... questions) {
-		this.rowZeroSystemQuestions.add(questions);
+		this.rowSystemQuestions.add(questions);
 	}
 	
 	public List<Question> split(int batchSize){
@@ -81,8 +81,8 @@ public class Question {
 			Question q = null;
 			for (String nLine: nextLines) {
 				if (bL == 0) {
-					q = new Question(this.rowZeroUserQuestion);
-					q.setRowZeroSystemQuestions(rowZeroSystemQuestions);
+					q = new Question(this.rowUserQuestion);
+					q.setRowZeroSystemQuestions(rowSystemQuestions);
 				}
 				q.nextLines.add(nLine);
 				bL++;
@@ -110,7 +110,7 @@ public class Question {
 	
 	public String toString(boolean includeMainQst, Integer lineLimit) {
 		StringBuilder sb = new StringBuilder();
-		for (String[] qLine: rowZeroSystemQuestions) {
+		for (String[] qLine: rowSystemQuestions) {
 			for (String col : qLine) {
 				sb.append(col);
 				sb.append("\n");
@@ -119,7 +119,7 @@ public class Question {
 		}
 		
 		if (includeMainQst) {
-			sb.append(rowZeroUserQuestion);
+			sb.append(rowUserQuestion);
 		}
 		sb.append("\n\n");
 		

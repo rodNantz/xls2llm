@@ -33,7 +33,7 @@ public class E2ETest extends GenericTest {
 	private LLMService llmService;
 	
 	@Autowired
-	public E2ETest(@Qualifier("test-service") LLMService service) {
+	public E2ETest(@Qualifier("gpt-service") LLMService service) {
 		this.llmService = service;
 	}
 	
@@ -51,25 +51,9 @@ public class E2ETest extends GenericTest {
 		System.out.println("nxtQsts: "+ nxtQsts);
 		// call
 		List<CategorizationResponse> responses = llmService.promptCategorization(req);
-		System.out.println(responses.get(0).toString());
+		System.out.println(responses);
 		// write to xlsx
-		Input2xls input = new Input2xls();
-		int row = 0;
-		for (CategorizationResponse response : responses) {
-			for (CommentRow comment : response.getComments()) {
-				long comId = comment.getCommentId();
-				int col = 0;
-				for (CategoryCol category : comment.getCategories()) {
-					String value = String.format("%s", //category.getCategoryName(), 
-							//category.getEvaluation().getCode(), category.getEvaluation().getDescription());
-							category.toString());
-					System.out.println("Writing row "+ comId +": row "+ row +", col "+ col +": "+ value);
-					input.putContent(row, col, value);
-					col++;
-				}
-				row++;
-			}
-		}
+		Input2xls input = Input2xls.fromCategorizationResponseList(responses);
 		
 		dr.writeDocument(xmlFilePath, xmlChangeFilePath, input);
 		

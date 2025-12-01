@@ -1,7 +1,10 @@
-package es.rodrigonant.p2ai.xls2llm.model;
+package es.rodrigonant.p2ai.xls2llm.model.custom;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import es.rodrigonant.p2ai.xls2llm.model.AlternativeI;
+import es.rodrigonant.p2ai.xls2llm.model.Code;
 
 @JsonFormat(shape = JsonFormat.Shape.OBJECT)
 public enum V1_1alt implements AlternativeI {

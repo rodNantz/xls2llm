@@ -3,6 +3,11 @@ package es.rodrigonant.p2ai.xls2llm.model;
 import java.util.Dictionary;
 import java.util.Enumeration;
 import java.util.Hashtable;
+import java.util.List;
+
+import es.rodrigonant.p2ai.xls2llm.model.classification.CategorizationResponse;
+import es.rodrigonant.p2ai.xls2llm.model.classification.CategoryCol;
+import es.rodrigonant.p2ai.xls2llm.model.classification.CommentRow;
 
 public class Input2xls {
 
@@ -28,6 +33,28 @@ public class Input2xls {
 	
 	public String getCellContent(int l, int c) {
 		return content.get(l).get(c);		
+	}
+	
+	public static Input2xls fromCategorizationResponseList(List<CategorizationResponse> responses) {
+		Input2xls input = new Input2xls();
+        int rowIdx = 0;
+        for (CategorizationResponse response : responses) {
+            for (CommentRow comment : response.getComments()) {
+            	long id = comment.getCommentId();
+                int colIdx = 0;
+                for (CategoryCol category : comment.getCategories()) {
+                    String value = String.format("%s -> %s", 
+                    		category.getCode(),
+                    		category.toString());
+                    System.out.println(""+ id + ": " + value);
+                    input.putContent(rowIdx, colIdx, value);
+                    colIdx++;
+                }
+                rowIdx++;
+            }
+        }
+        
+        return input;
 	}
 	
 }

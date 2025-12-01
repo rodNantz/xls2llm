@@ -35,18 +35,14 @@ import es.rodrigonant.p2ai.xls2llm.model.handling.InputException;
 @Service
 public class DocumentMgrXlsImpl implements DocumentManager {
 
-	public final int ID_COL = 1;
-	public final int HEADER_ROW_INI = 1;
-	public final int HEADER_ROW_MAX = 5;
-	public final int HEADER_COL_INI = 1;
-	//public final int HEADER_COL_FIN = 8;
-	public final int HEADER_COL_FIN = 8;	// only cat 1 for testing
-//	public final int NEXTLINES_ROW_INI = 3;
-	public final int NEXTLINES_COL = HEADER_COL_INI+1;
+	public final int ID_COL = ExcelConstants.ID_COL;
+	public final int HEADER_ROW_INI = ExcelConstants.INITIAL_LINE;
+	public final int COL_INI = ExcelConstants.INITIAL_COL;
+	public final int COL_FIN = ExcelConstants.FINAL_COL;
+	public final int INI_NEXTLINES = ExcelConstants.CONTENT_INITIAL_LINE;
+	public final int INI_CNT_COL = ExcelConstants.CONTENT_INITIAL_COL;
+	public final int COL_CONTENT = ExcelConstants.INITIAL_COL;
 	
-	int wIniLine = ExcelConstants.INITIAL_LINE; 
-	int wIniCol = ExcelConstants.INITIAL_COL;
-	int wFinalCol = wIniCol; // for test
 	private Sheet sheet;
 	
 	@Override
@@ -66,19 +62,20 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 			this.sheet = workbook.getSheetAt(0);
 
 			for (Row row : sheet) {
-				if (rowLimit != null && rowLimit < row.getRowNum())
+				// Only apply rowLimit to data rows, taking into account INITIAL_LINE
+				if (rowLimit != null && row.getRowNum() >= (ExcelConstants.CONTENT_INITIAL_LINE + rowLimit))
 					break;
 				
 				if (isHeaderContent(row, "S")) {
-					q.addRowZeroSystemQuestion(getContentOnHeaderColumns(row));
+					q.addRowZeroSystemQuestion(getContentOnHeaderColumns(row, COL_INI, COL_FIN));
 				} else if (isHeaderContent(row, "Q")){
-					q.setRowZeroUserQuestion(getContentOnHeaderCol(row));
+					q.setRowZeroUserQuestion(getContentOnCell(row, COL_INI));
 				} else if (isNextLinesRow(row)){
 					debug(row.toString());
-					nextLines.add(getContentOnNextLine(row));
-					for (int c = wIniCol; c <= wFinalCol; c++) {
-						nextAnswers.add(row.getCell(c+wIniCol).getStringCellValue());
-					}
+					nextLines.add(getContentOnCell(row, COL_INI));
+//					for (int c = COL_INI; c <= COL_FIN; c++) {
+//						nextAnswers.add(row.getCell(c).getStringCellValue());
+//					}
 				}
 			}
 			q.setNextLines(nextLines);
@@ -147,35 +144,29 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 
 	
 	public void writeDocument(String xlsFile, String xlsFileToChg, Input2xls input) {
-    try (
-        InputStream fis = getFileFromResourceAsStream(xlsFile);
-        XSSFWorkbook workbook = new XSSFWorkbook(fis);
-        FileOutputStream outputStream = new FileOutputStream(xlsFileToChg)
-    ) {
-        this.sheet = workbook.getSheetAt(0);
-
-        Enumeration<Integer> rIdxs = input.getRowIndexes();
-        while (rIdxs.hasMoreElements()) {
-            int r = rIdxs.nextElement();
-            Enumeration<Integer> cIdxs = input.getColIndexes(r);
-            while (cIdxs.hasMoreElements()) {
-                int c = cIdxs.nextElement();
-                setContentIntoXls(r, c, input.getCellContent(r, c));
-            }
-        }
-
-        workbook.write(outputStream);
-        outputStream.flush();
-    } catch (IOException e) {
-        e.printStackTrace();
-        throw new InputException(e);
-    }
-}
+	    try (
+	        InputStream fis = getFileFromResourceAsStream(xlsFile);
+	        XSSFWorkbook workbook = new XSSFWorkbook(fis);
+	        FileOutputStream outputStream = new FileOutputStream(xlsFileToChg)
+	    ){
+	        this.sheet = workbook.getSheetAt(0);
 	
+	        Enumeration<Integer> rIdxs = input.getRowIndexes();
+	        while (rIdxs.hasMoreElements()) {
+	            int r = rIdxs.nextElement();
+	            Enumeration<Integer> cIdxs = input.getColIndexes(r);
+	            while (cIdxs.hasMoreElements()) {
+	                int c = cIdxs.nextElement();
+	                setContentIntoXls(r, c, input.getCellContent(r, c));
+	            }
+	        }
 	
-	private boolean isHeaderRow(Row row) {
-		// col B == idx 1
-		return row.getRowNum() >= HEADER_COL_INI && row.getRowNum() <= HEADER_COL_FIN;
+	        workbook.write(outputStream);
+	        outputStream.flush();
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	        throw new InputException(e);
+	    }
 	}
 	
 	private boolean isHeaderContent(Row row, String systemOrUserQst) {
@@ -187,24 +178,20 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 	
 	private boolean isNextLinesRow(Row row) {
 		// col B == idx 1
-		return (row.getCell(HEADER_COL_INI).getCellType() == CellType.NUMERIC &&
-				row.getCell(HEADER_COL_INI).getNumericCellValue() > 0);
+		return (row.getCell(ID_COL).getCellType() == CellType.NUMERIC &&
+				row.getCell(ID_COL).getNumericCellValue() > 0);
 	}
 
-	private String[] getContentOnHeaderColumns(Row row) {
+	private String[] getContentOnHeaderColumns(Row row, int fromCol, int toCol) {
 		List<String> cols = new ArrayList<>();
-		for (int i = HEADER_COL_INI; i <= HEADER_COL_FIN; i++) {
+		for (int i = COL_INI; i <= COL_FIN; i++) {
 			cols.add( row.getCell(i).getStringCellValue() );
 		}
 		return cols.toArray(new String[0]);
 	}
 	
-	private String getContentOnHeaderCol(Row row) {
-		return row.getCell(HEADER_COL_INI).getStringCellValue();
-	}
-	
-	private String getContentOnNextLine(Row row) {
-		return row.getCell(NEXTLINES_COL).getStringCellValue();
+	private String getContentOnCell(Row row, int col) {
+		return row.getCell(COL_INI).getStringCellValue();
 	}
 	
 	
@@ -229,18 +216,18 @@ public class DocumentMgrXlsImpl implements DocumentManager {
     }
 
 	private void setContentIntoXls(int rowNo, int cellNo, String value) {
-		Row r = this.sheet.getRow(rowNo+wIniLine); // 10-1
+		Row r = this.sheet.getRow(rowNo+INI_NEXTLINES); // 10-1
 		if (r == null) {
 		   // First cell in the row, create
-		   r = this.sheet.createRow(rowNo+wIniLine);
+		   r = this.sheet.createRow(rowNo+INI_NEXTLINES);
 		}
 		
-		Cell c = r.getCell(cellNo+wIniCol); // 4-1
+		Cell c = r.getCell(cellNo+INI_CNT_COL); // 4-1
 		if (c == null) {
 		    // New cell
-		    c = r.createCell(cellNo+wIniCol, CellType.STRING);
+		    c = r.createCell(cellNo+INI_CNT_COL, CellType.STRING);
 		}
-		System.out.println("Setting cell at row: " + (rowNo+wIniLine) + ", col: " + (cellNo+wIniCol) + " with value: " + value);
+		System.out.println("Setting cell at row: " + (rowNo+INI_NEXTLINES) + ", col: " + (cellNo+INI_CNT_COL) + " with value: " + value);
 		c.setCellValue(value);
 	}
 

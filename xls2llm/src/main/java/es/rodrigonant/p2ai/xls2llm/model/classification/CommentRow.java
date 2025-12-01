@@ -3,7 +3,8 @@ package es.rodrigonant.p2ai.xls2llm.model.classification;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import es.rodrigonant.p2ai.xls2llm.model.V1alt;
+
+import es.rodrigonant.p2ai.xls2llm.model.custom.V1alt;
 
 public class CommentRow {
 

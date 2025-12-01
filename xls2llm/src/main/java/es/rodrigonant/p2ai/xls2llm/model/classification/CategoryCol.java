@@ -3,9 +3,13 @@ package es.rodrigonant.p2ai.xls2llm.model.classification;
 import jakarta.validation.constraints.Pattern;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import es.rodrigonant.p2ai.xls2llm.model.V1alt;
-import es.rodrigonant.p2ai.xls2llm.model.V1_1alt;
-import es.rodrigonant.p2ai.xls2llm.model.V1_2alt;
+
+import es.rodrigonant.p2ai.xls2llm.model.custom.V1_1alt;
+import es.rodrigonant.p2ai.xls2llm.model.custom.V1_2alt;
+import es.rodrigonant.p2ai.xls2llm.model.custom.V1alt;
+import es.rodrigonant.p2ai.xls2llm.model.custom.V2_1alt;
+import es.rodrigonant.p2ai.xls2llm.model.custom.V2alt;
+import es.rodrigonant.p2ai.xls2llm.model.custom.V3alt;
 
 public class CategoryCol {
  	
@@ -36,6 +40,7 @@ public class CategoryCol {
 		col.setDescription(alt.getDescription());
 		return col;
 	}
+	
 	public static CategoryCol fromV1_2alt(double id, V1_2alt alt) {
 		CategoryCol col = new CategoryCol();
 		col.setCategory(id);
@@ -44,6 +49,34 @@ public class CategoryCol {
 		col.setDescription(alt.getDescription());
 		return col;
 	}
+	
+	public static CategoryCol fromV2alt(double id, V2alt alt) {
+		CategoryCol col = new CategoryCol();
+		col.setCategory(id);
+		col.setEvaluationType(CategoryType.V2ALT);
+		col.setCode(alt.getCode().toString());
+		col.setDescription(alt.getDescription());
+		return col;
+	}
+	
+	public static CategoryCol fromV2_1alt(double id, V2_1alt alt) {
+		CategoryCol col = new CategoryCol();
+		col.setCategory(id);
+		col.setEvaluationType(CategoryType.V2_1ALT);
+		col.setCode(alt.getCode().toString());
+		col.setDescription(alt.getDescription());
+		return col;
+	}
+	
+	public static CategoryCol fromV3alt(double id, V3alt alt) {
+		CategoryCol col = new CategoryCol();
+		col.setCategory(id);
+		col.setEvaluationType(CategoryType.V2_1ALT);
+		col.setCode(alt.getCode().toString());
+		col.setDescription(alt.getDescription());
+		return col;
+	}
+	
 	// getters & setters
 	@JsonProperty
 	public double getCategory() {

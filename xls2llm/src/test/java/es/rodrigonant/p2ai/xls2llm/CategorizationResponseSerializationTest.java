@@ -4,10 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategorizationResponse;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CommentRow;
 import es.rodrigonant.p2ai.xls2llm.model.classification.EvaluationWrapper;
+import es.rodrigonant.p2ai.xls2llm.model.custom.V1_1alt;
+import es.rodrigonant.p2ai.xls2llm.model.custom.V1_2alt;
+import es.rodrigonant.p2ai.xls2llm.model.custom.V1alt;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategoryCol;
-import es.rodrigonant.p2ai.xls2llm.model.V1alt;
-import es.rodrigonant.p2ai.xls2llm.model.V1_1alt;
-import es.rodrigonant.p2ai.xls2llm.model.V1_2alt;
+
 import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 

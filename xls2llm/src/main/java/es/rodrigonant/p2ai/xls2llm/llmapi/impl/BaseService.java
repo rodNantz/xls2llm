@@ -55,8 +55,13 @@ public abstract class BaseService implements LLMService {
 	
 	// returns parametrized response
 	public List<CategorizationResponse> promptCategorization(Request2LLM req) {
+		System.out.println(this.getClass() + ": promptCategorization");
 		List<Question> qsts = req.question().split(req.batchSize());
 		List<CategorizationResponse> catResponses = new ArrayList<>();
+		
+		if (qsts.isEmpty()) {
+			throw new IllegalArgumentException("No questions to process");
+		}
 		
 		for (Question q : qsts) {
 			StructuredChatCompletion<CategorizationResponse> sCC = categorizationRequest(q.getRowZeroUserQuestion(), q.toString(false));

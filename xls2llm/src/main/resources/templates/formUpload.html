@@ -6,7 +6,15 @@
 <h2>Upload Excel File</h2>
 <form method="POST" enctype="multipart/form-data" action="/upload">
     <input type="file" name="file" accept=".xlsx" required />
+    
+    <!-- Added: numeric input to limit number of rows to process -->
+    <div>
+        <label for="rowLimit">Row limit (optional):</label>
+        <input type="number" id="rowLimit" name="rowLimit" min="1" placeholder="e.g. 100" />
+    </div>
+
     <button type="submit">Upload and Process</button>
+    
 </form>
 </body>
 </html>

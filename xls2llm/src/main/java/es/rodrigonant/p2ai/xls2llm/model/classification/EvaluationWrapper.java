@@ -1,9 +1,10 @@
 package es.rodrigonant.p2ai.xls2llm.model.classification;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import es.rodrigonant.p2ai.xls2llm.model.V1alt;
-import es.rodrigonant.p2ai.xls2llm.model.V1_1alt;
-import es.rodrigonant.p2ai.xls2llm.model.V1_2alt;
+
+import es.rodrigonant.p2ai.xls2llm.model.custom.V1_1alt;
+import es.rodrigonant.p2ai.xls2llm.model.custom.V1_2alt;
+import es.rodrigonant.p2ai.xls2llm.model.custom.V1alt;
 
 public class EvaluationWrapper {
     @JsonProperty

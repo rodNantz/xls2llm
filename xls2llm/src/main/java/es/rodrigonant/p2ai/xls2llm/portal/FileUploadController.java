@@ -39,7 +39,7 @@ public class FileUploadController {
     }
 
     @PostMapping("/upload")
-    public ResponseEntity<InputStreamResource> handleFileUpload(@RequestParam("file") MultipartFile file, Model model) throws IOException {
+    public ResponseEntity<InputStreamResource> handleFileUpload(@RequestParam("file") MultipartFile file, @RequestParam(value = "rowLimit", required = false) Integer rowLimit, Model model) throws IOException {
         // Save uploaded file to temp location
         File tempInput = File.createTempFile("input", ".xlsx");
         file.transferTo(tempInput);
@@ -47,22 +47,12 @@ public class FileUploadController {
         String outputPath = tempInput.getParent() + File.separator + "output-" + tempInput.getName();
 
         // Process file (reuse logic from CommandLineRunnerV1)
-        Request2LLM req = dr.getDocument(inputPath, 10);
+        // If rowLimit is null or not positive, pass null to process all rows
+        Integer effectiveLimit = (rowLimit != null && rowLimit > 0) ? rowLimit : null;
+        Request2LLM req = dr.getDocument(inputPath, effectiveLimit);
         List<CategorizationResponse> responses = llmService.promptCategorization(req);
-        Input2xls input = new Input2xls();
-        int rowIdx = 0;
-        for (CategorizationResponse response : responses) {
-            for (CommentRow comment : response.getComments()) {
-                long id = comment.getCommentId();
-                int colIdx = 0;
-                for (CategoryCol category : comment.getCategories()) {
-                    String value = String.format("-> %s", category.toString());
-                    input.putContent(rowIdx, colIdx, value);
-                    colIdx++;
-                }
-                rowIdx++;
-            }
-        }
+        Input2xls input = Input2xls.fromCategorizationResponseList(responses);
+
         dr.writeDocument(inputPath, outputPath, input);
 
         // Return the written file as a download

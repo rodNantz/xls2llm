@@ -24,12 +24,12 @@ import es.rodrigonant.p2ai.xls2llm.model.AlternativeI;
 import es.rodrigonant.p2ai.xls2llm.model.Input2xls;
 import es.rodrigonant.p2ai.xls2llm.model.Question;
 import es.rodrigonant.p2ai.xls2llm.model.Request2LLM;
-import es.rodrigonant.p2ai.xls2llm.model.V1_1alt;
-import es.rodrigonant.p2ai.xls2llm.model.V1alt;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategorizationResponse;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategoryCol;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CommentRow;
 import es.rodrigonant.p2ai.xls2llm.model.classification.EvaluationWrapper;
+import es.rodrigonant.p2ai.xls2llm.model.custom.V1_1alt;
+import es.rodrigonant.p2ai.xls2llm.model.custom.V1alt;
 
 class DocumentManagerTest extends GenericTest {
 
