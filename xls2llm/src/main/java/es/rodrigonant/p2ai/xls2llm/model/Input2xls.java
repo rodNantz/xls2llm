@@ -5,14 +5,15 @@ import java.util.Enumeration;
 import java.util.Hashtable;
 import java.util.List;
 
+import es.rodrigonant.p2ai.xls2llm.aop.Logger;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategorizationResponse;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategoryCol;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CommentRow;
 
 public class Input2xls {
 
-	// content indexes ALWAYS consider the offsets above.
 	Dictionary<Integer,Dictionary<Integer,String>> content = new Hashtable<>();
+	private final static Logger LOG = new Logger(Input2xls.class);
 	
 	public Enumeration<Integer> getRowIndexes() {
 		return content.keys();		
@@ -35,9 +36,9 @@ public class Input2xls {
 		return content.get(l).get(c);		
 	}
 	
-	public static Input2xls fromCategorizationResponseList(List<CategorizationResponse> responses) {
+	public static Input2xls fromCategorizationResponseList(List<CategorizationResponse> responses, int rowOffset) {
 		Input2xls input = new Input2xls();
-        int rowIdx = 0;
+        int rowIdx = rowOffset;
         for (CategorizationResponse response : responses) {
             for (CommentRow comment : response.getComments()) {
             	long id = comment.getCommentId();
@@ -46,7 +47,7 @@ public class Input2xls {
                     String value = String.format("%s -> %s", 
                     		category.getCode(),
                     		category.toString());
-                    System.out.println(""+ id + ": " + value);
+                    LOG.debug(""+ id + ": " + value);
                     input.putContent(rowIdx, colIdx, value);
                     colIdx++;
                 }

@@ -1,4 +1,4 @@
-package es.rodrigonant.p2ai.xls2llm;
+package es.rodrigonant.p2ai.xls2llm.integration;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,6 +15,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import com.openai.models.chat.completions.ChatCompletion;
 import com.openai.models.chat.completions.ChatCompletion.Choice;
 
+import es.rodrigonant.p2ai.xls2llm.GenericTest;
 import es.rodrigonant.p2ai.xls2llm.document.DocumentManager;
 import es.rodrigonant.p2ai.xls2llm.llmapi.LLMService;
 import es.rodrigonant.p2ai.xls2llm.model.Input2xls;
@@ -53,7 +54,7 @@ public class E2ETest extends GenericTest {
 		List<CategorizationResponse> responses = llmService.promptCategorization(req);
 		System.out.println(responses);
 		// write to xlsx
-		Input2xls input = Input2xls.fromCategorizationResponseList(responses);
+		Input2xls input = Input2xls.fromCategorizationResponseList(responses, 0);
 		
 		dr.writeDocument(xmlFilePath, xmlChangeFilePath, input);
 		

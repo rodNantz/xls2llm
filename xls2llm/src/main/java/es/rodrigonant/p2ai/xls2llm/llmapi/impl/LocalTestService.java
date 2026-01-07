@@ -1,11 +1,16 @@
 package es.rodrigonant.p2ai.xls2llm.llmapi.impl;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import com.openai.client.okhttp.OpenAIOkHttpClient;
+
+import es.rodrigonant.p2ai.xls2llm.model.Question;
+import es.rodrigonant.p2ai.xls2llm.model.classification.CategorizationResponse;
 
 @Service
 @Primary

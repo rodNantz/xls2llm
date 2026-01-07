@@ -1,4 +1,4 @@
-package es.rodrigonant.p2ai.xls2llm;
+package es.rodrigonant.p2ai.xls2llm.document;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -16,6 +16,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import com.openai.models.chat.completions.ChatCompletion;
 
+import es.rodrigonant.p2ai.xls2llm.GenericTest;
 import es.rodrigonant.p2ai.xls2llm.document.DocumentManager;
 import es.rodrigonant.p2ai.xls2llm.llmapi.LLMService;
 import es.rodrigonant.p2ai.xls2llm.llmapi.impl.OpenAIService;
@@ -37,6 +38,7 @@ class DocumentManagerTest extends GenericTest {
 	DocumentManager dr;
 	String xmlFilePath = "xls/test1.xlsx";
 	String xmlChangeFilePath = "src/test/resources/xls/test1-copy-doctest.xlsx";
+	String xmlChangeFilePath2 = "src/test/resources/xls/test1-copy-doctest2.xlsx";
 	
 	@Test
 	void xlsDocTest() {
@@ -60,8 +62,6 @@ class DocumentManagerTest extends GenericTest {
 
 	@Test
 	void xlsWriterTest() {
-		Request2LLM req = dr.getDocument(xmlFilePath, 10);
-		
 		// write to xlsx
 		List<CategorizationResponse> responses = createMockResponses();
 
@@ -82,6 +82,25 @@ class DocumentManagerTest extends GenericTest {
 				row++;
 			}
 		}
+		dr.writeDocument(xmlFilePath, xmlChangeFilePath2, input);
+		
+		File wFile = new File(xmlChangeFilePath2);
+        assertTrue(wFile.exists());
+        
+        try {
+			Runtime.getRuntime().exec("explorer.exe /SELECT,\"" + wFile.getAbsolutePath() + "\"");
+			System.out.println("Opened file: " + wFile.getAbsolutePath());
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
+	}
+	
+	@Test
+	void xlsNewWriterTest() {
+		List<CategorizationResponse> responses = createMockResponses();
+		Input2xls input = Input2xls.fromCategorizationResponseList(responses, 0);
+		
 		dr.writeDocument(xmlFilePath, xmlChangeFilePath, input);
 		
 		File wFile = new File(xmlChangeFilePath);
@@ -138,4 +157,23 @@ class DocumentManagerTest extends GenericTest {
 		
 		return responses;
 	}
+	
+    @Test
+    public void batchRepro() {
+        String xmlFilePath = "xls/test1-simple.xlsx";
+        int rowLimit = 25;
+        int batchSize = 25;
+
+        List<Request2LLM> docs = dr.getDocument(xmlFilePath, rowLimit, batchSize);
+        int total = docs.stream().mapToInt(d -> d.question().getNextLines().size()).sum();
+
+        System.out.println("Documents returned: " + docs.size());
+        for (int i = 0; i < docs.size(); i++) {
+            System.out.println("  doc[" + i + "] lines: " + docs.get(i).question().getNextLines().size());
+        }
+        System.out.println("Total lines: " + total);
+
+        assertEquals(rowLimit, total, "Total rows read should equal requested rowLimit");
+    }
+    
 }

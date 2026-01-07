@@ -1,6 +1,8 @@
-package es.rodrigonant.p2ai.xls2llm;
+package es.rodrigonant.p2ai.xls2llm.model;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import es.rodrigonant.p2ai.xls2llm.GenericTest;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategorizationResponse;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CommentRow;
 import es.rodrigonant.p2ai.xls2llm.model.classification.EvaluationWrapper;

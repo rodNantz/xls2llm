@@ -1,4 +1,4 @@
-package es.rodrigonant.p2ai.xls2llm;
+package es.rodrigonant.p2ai.xls2llm.model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -8,11 +8,12 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import es.rodrigonant.p2ai.xls2llm.GenericTest;
 import es.rodrigonant.p2ai.xls2llm.model.Question;
 import es.rodrigonant.p2ai.xls2llm.model.Request2LLM;
 
 @SpringBootTest
-public class RequestBuildTest {
+public class RequestBuildTest extends GenericTest {
 
 	@Test
 	public void splitRequestTest() {

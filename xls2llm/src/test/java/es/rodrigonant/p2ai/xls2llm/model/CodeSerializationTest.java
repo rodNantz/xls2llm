@@ -3,6 +3,9 @@ package es.rodrigonant.p2ai.xls2llm.model;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import es.rodrigonant.p2ai.xls2llm.model.Code;
+
 import org.junit.jupiter.api.Test;
 
 public class CodeSerializationTest {

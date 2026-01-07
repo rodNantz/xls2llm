@@ -1,9 +1,10 @@
-package es.rodrigonant.p2ai.xls2llm;
+package es.rodrigonant.p2ai.xls2llm.model;
 
 import java.util.Enumeration;
 
 import org.junit.jupiter.api.Test;
 
+import es.rodrigonant.p2ai.xls2llm.GenericTest;
 import es.rodrigonant.p2ai.xls2llm.model.Input2xls;
 
 public class Input2xlsTester extends GenericTest {

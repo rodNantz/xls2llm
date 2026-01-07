@@ -65,6 +65,18 @@ public class Question {
 		return rowSystemQuestions;
 	}
 
+	public String getRowZeroSystemQuestionsString() {
+		StringBuilder sb = new StringBuilder();
+		for (String[] qLine: rowSystemQuestions) {
+			for (String col : qLine) {
+				sb.append(col);
+				sb.append("\n");
+			}
+			sb.append("\n");
+		}
+		return sb.toString();
+	}
+	
 	public void setRowZeroSystemQuestions(List<String[]> rowQuestion) {
 		this.rowSystemQuestions = rowQuestion;
 	}
@@ -104,23 +116,24 @@ public class Question {
 		return toString(true);
 	}	
 	
-	public String toString(boolean includeMainQst) {
-		return toString(includeMainQst, null);
+	public String toString(boolean includeSystemQst) {
+		return toString(includeSystemQst, null);
 	}
 	
-	public String toString(boolean includeMainQst, Integer lineLimit) {
+	public String toString(boolean includeSystemQst, Integer lineLimit) {
 		StringBuilder sb = new StringBuilder();
-		for (String[] qLine: rowSystemQuestions) {
-			for (String col : qLine) {
-				sb.append(col);
+		if (includeSystemQst) {
+			for (String[] qLine: rowSystemQuestions) {
+				for (String col : qLine) {
+					sb.append(col);
+					sb.append("\n");
+				}
 				sb.append("\n");
 			}
-			sb.append("\n");
 		}
 		
-		if (includeMainQst) {
-			sb.append(rowUserQuestion);
-		}
+		sb.append(rowUserQuestion);
+		
 		sb.append("\n\n");
 		
 		int i = 1;

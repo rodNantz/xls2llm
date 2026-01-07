@@ -13,6 +13,7 @@ import com.openai.models.chat.completions.StructuredChatCompletionCreateParams;
 import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseCreateParams;
 
+import es.rodrigonant.p2ai.xls2llm.aop.Logger;
 import es.rodrigonant.p2ai.xls2llm.llmapi.LLMService;
 import es.rodrigonant.p2ai.xls2llm.model.Question;
 import es.rodrigonant.p2ai.xls2llm.model.Request2LLM;
@@ -23,6 +24,7 @@ public abstract class BaseService implements LLMService {
 	
 	protected OpenAIClient client;
 	protected String baseUrl;
+	private final Logger LOG = new Logger(this.getClass());
 	
 	@PostConstruct
 	public void setup() {
@@ -42,9 +44,13 @@ public abstract class BaseService implements LLMService {
 		return completions;
 	}
 	
+	public ChatCompletion promptCompletion(Question q) {
+		return request(q.toString());
+	}
+	
 	private ChatCompletion request(String userMessage) {
-		System.out.println(this.getClass() + ": Requesting "+ baseUrl);
-		System.out.println(userMessage);
+		LOG.info("Requesting "+ baseUrl);
+		LOG.info(userMessage);
 		ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
 		        .addUserMessage(userMessage)
 		        .model(ChatModel.GPT_4_1)
@@ -55,28 +61,34 @@ public abstract class BaseService implements LLMService {
 	
 	// returns parametrized response
 	public List<CategorizationResponse> promptCategorization(Request2LLM req) {
-		System.out.println(this.getClass() + ": promptCategorization");
 		List<Question> qsts = req.question().split(req.batchSize());
-		List<CategorizationResponse> catResponses = new ArrayList<>();
-		
+		List<CategorizationResponse> catResponses = new ArrayList<>();		
 		if (qsts.isEmpty()) {
 			throw new IllegalArgumentException("No questions to process");
 		}
-		
 		for (Question q : qsts) {
-			StructuredChatCompletion<CategorizationResponse> sCC = categorizationRequest(q.getRowZeroUserQuestion(), q.toString(false));
-			sCC.choices().stream()
-		        .flatMap(choice -> choice.message().content().stream())
-		        .forEach(catResponses::add);
-		        //.forEach(catResponse -> catResponses.addAll(catResponses));
+			catResponses = promptCategorization(q, catResponses);
 		}
+		LOG.info("Total categorization responses: "+ catResponses.size());
+		LOG.info(catResponses.toString());
+		return catResponses;
+	}
+	
+	public List<CategorizationResponse> promptCategorization(Question q, List<CategorizationResponse> catResponses) {
+		LOG.info("promptCategorization");
+		
+		StructuredChatCompletion<CategorizationResponse> sCC = categorizationRequest(q.toString(false), q.getRowZeroSystemQuestionsString());
+		sCC.choices().stream()
+	        .flatMap(choice -> choice.message().content().stream())
+	        .forEach(catResponses::add);
 		
 		return catResponses;
 	}
 	
 	private StructuredChatCompletion<CategorizationResponse> categorizationRequest(String userMessage, String systemMessage) {
-		System.out.println(this.getClass() + ": Requesting "+ baseUrl);
-		System.out.println(userMessage);
+		LOG.info("categorizationRequest "+ baseUrl);
+		LOG.info("systemMessage: "+ systemMessage);
+		LOG.info("userMessage:" + userMessage);
 		StructuredChatCompletionCreateParams<CategorizationResponse> params = ChatCompletionCreateParams.builder()
 		        .addSystemMessage(systemMessage)
 				.addUserMessage(userMessage)
@@ -87,13 +99,4 @@ public abstract class BaseService implements LLMService {
 		return client.chat().completions().create(params);
 	}
 	
-	private Response responseRequest(String userMessage) {		
-		System.out.println(this.getClass() + ": Requesting "+ baseUrl);
-		ResponseCreateParams params = ResponseCreateParams.builder()
-				.input(userMessage)
-				.model(ChatModel.GPT_4_1)
-		        .build();
-		
-		return client.responses().create(params);
-	}
 }
