@@ -44,9 +44,7 @@ public class Input2xls {
             	long id = comment.getCommentId();
                 int colIdx = 0;
                 for (CategoryCol category : comment.getCategories()) {
-                    String value = String.format("%s -> %s", 
-                    		category.getCode(),
-                    		category.toString());
+                    String value = category.getCode();
                     LOG.debug(""+ id + ": " + value);
                     input.putContent(rowIdx, colIdx, value);
                     colIdx++;

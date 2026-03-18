@@ -11,6 +11,8 @@ public interface DocumentManager {
 	
 	List<Request2LLM> getDocument(String xlsFile, Integer rowLimit, Integer batchSize);
 
+	List<Request2LLM> getDocument(String xlsFile, Integer startLine, Integer rowLimit, Integer batchSize);
+
 	void writeDocument(String xlsFile, String xlsFileToChg, Input2xls input);
 
 }

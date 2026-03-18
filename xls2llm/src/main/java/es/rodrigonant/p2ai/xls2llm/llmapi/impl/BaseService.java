@@ -3,6 +3,9 @@ package es.rodrigonant.p2ai.xls2llm.llmapi.impl;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.openai.client.OpenAIClient;
 import com.openai.models.ChatModel;
 import com.openai.models.chat.completions.ChatCompletion;
@@ -13,7 +16,6 @@ import com.openai.models.chat.completions.StructuredChatCompletionCreateParams;
 import com.openai.models.responses.Response;
 import com.openai.models.responses.ResponseCreateParams;
 
-import es.rodrigonant.p2ai.xls2llm.aop.Logger;
 import es.rodrigonant.p2ai.xls2llm.llmapi.LLMService;
 import es.rodrigonant.p2ai.xls2llm.model.Question;
 import es.rodrigonant.p2ai.xls2llm.model.Request2LLM;
@@ -24,7 +26,7 @@ public abstract class BaseService implements LLMService {
 	
 	protected OpenAIClient client;
 	protected String baseUrl;
-	private final Logger LOG = new Logger(this.getClass());
+	private static final Logger LOG = LoggerFactory.getLogger(BaseService.class);
 	
 	@PostConstruct
 	public void setup() {
@@ -49,17 +51,21 @@ public abstract class BaseService implements LLMService {
 	}
 	
 	private ChatCompletion request(String userMessage) {
-		LOG.info("Requesting "+ baseUrl);
-		LOG.info(userMessage);
+		LOG.debug("=== OpenAI API Request ===");
+		LOG.debug("URL: {}", baseUrl);
+		LOG.debug("Message: {}", userMessage);
 		ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
 		        .addUserMessage(userMessage)
 		        .model(ChatModel.GPT_4_1)
 		        .build();
 		
-		return client.chat().completions().create(params);
+		ChatCompletion response = client.chat().completions().create(params);
+		LOG.debug("=== OpenAI API Response ===");
+		LOG.debug("Model: {}", response.model());
+		LOG.debug("Usage - Tokens: {}", response.usage());
+		return response;
 	}
 	
-	// returns parametrized response
 	public List<CategorizationResponse> promptCategorization(Request2LLM req) {
 		List<Question> qsts = req.question().split(req.batchSize());
 		List<CategorizationResponse> catResponses = new ArrayList<>();		
@@ -69,13 +75,12 @@ public abstract class BaseService implements LLMService {
 		for (Question q : qsts) {
 			catResponses = promptCategorization(q, catResponses);
 		}
-		LOG.info("Total categorization responses: "+ catResponses.size());
-		LOG.info(catResponses.toString());
+		LOG.debug("Total categorization responses: {}", catResponses.size());
 		return catResponses;
 	}
 	
 	public List<CategorizationResponse> promptCategorization(Question q, List<CategorizationResponse> catResponses) {
-		LOG.info("promptCategorization");
+		LOG.debug("Requesting categorization for question batch");
 		
 		StructuredChatCompletion<CategorizationResponse> sCC = categorizationRequest(q.toString(false), q.getRowZeroSystemQuestionsString());
 		sCC.choices().stream()
@@ -86,9 +91,11 @@ public abstract class BaseService implements LLMService {
 	}
 	
 	private StructuredChatCompletion<CategorizationResponse> categorizationRequest(String userMessage, String systemMessage) {
-		LOG.info("categorizationRequest "+ baseUrl);
-		LOG.info("systemMessage: "+ systemMessage);
-		LOG.info("userMessage:" + userMessage);
+		LOG.debug("=== OpenAI Categorization Request ===");
+		LOG.debug("URL: {}", baseUrl);
+		LOG.debug("SystemMessage length: {}", systemMessage.length());
+		LOG.debug("UserMessage length: {}", userMessage.length());
+		
 		StructuredChatCompletionCreateParams<CategorizationResponse> params = ChatCompletionCreateParams.builder()
 		        .addSystemMessage(systemMessage)
 				.addUserMessage(userMessage)
@@ -96,7 +103,20 @@ public abstract class BaseService implements LLMService {
 		        .responseFormat(CategorizationResponse.class)
 		        .build();
 		
-		return client.chat().completions().create(params);
+		StructuredChatCompletion<CategorizationResponse> response = client.chat().completions().create(params);
+		LOG.debug("=== OpenAI Categorization Response ===");
+		LOG.debug("Choices count: {}", response.choices().size());
+		if (!response.choices().isEmpty()) {
+			var firstChoice = response.choices().get(0);
+			LOG.debug("First choice has content: {}", firstChoice.message().content().isPresent());
+			if (firstChoice.message().content().isPresent()) {
+				var content = firstChoice.message().content().get();
+				if (content instanceof CategorizationResponse catResp) {
+					LOG.debug("Response: {}", catResp);
+				}
+			}
+		}
+		return response;
 	}
 	
 }

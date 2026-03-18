@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>es.rodrigonant.p2ai</groupId>
 	<artifactId>xls2llm</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.0.2-SNAPSHOT</version>
 	<name>xls2llm</name>
 	<description>Reads Excel files to request mass prompts to LLM services.</description>
 	<url/>
@@ -81,6 +81,15 @@
 	</dependencies>
 	<build>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.14.0</version>
+				<configuration>
+					<source>23</source>
+					<target>23</target>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>

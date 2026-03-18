@@ -21,10 +21,11 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 
-import es.rodrigonant.p2ai.xls2llm.aop.Logger;
 import es.rodrigonant.p2ai.xls2llm.constants.ExcelConstants;
 import es.rodrigonant.p2ai.xls2llm.document.DocumentManager;
 import es.rodrigonant.p2ai.xls2llm.model.Answer;
@@ -44,7 +45,7 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 	public final int INI_CNT_COL = ExcelConstants.CONTENT_INITIAL_COL;
 	public final int COL_CONTENT = ExcelConstants.INITIAL_COL;
 	
-	private final Logger LOG = new Logger(DocumentMgrXlsImpl.class);
+	private static final Logger LOG = LoggerFactory.getLogger(DocumentMgrXlsImpl.class);
 	
 	@Override
 	public Request2LLM getDocument(String xlsFile, Integer rowLimit) {
@@ -153,6 +154,102 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 					}
 					break;
 				}
+
+				// Treat as data row if primary content cell is non-empty (robust to missing numeric ID)
+				if (isDataRow(row)){
+					LOG.debug(row.toString());
+					nextLines.add(getContentOnCell(row, COL_INI));
+					batchCount++;
+				}
+
+				if (batchCount >= batchSize) {
+					// Create document for the batch: create fresh Question/Answer objects so earlier batches are not mutated
+					Question qBatch = new Question(headerUserQuestion);
+					qBatch.setRowZeroSystemQuestions(headerSystemQuestions);
+					qBatch.setNextLines(nextLines);
+					Answer aBatch = new Answer();
+					aBatch.setNextLines(nextAnswers);
+					document = new Request2LLM(qBatch, aBatch, batchSize);
+					// Reset for next batch
+					nextLines = new ArrayList<>();
+					nextAnswers = new ArrayList<>();
+					batchCount = 0;
+					documents.add(document);
+				}
+			}
+
+			return documents;
+		} catch (IOException e) {
+			throw new InputException(e);
+		}
+	}
+
+	@Override
+	public List<Request2LLM> getDocument(String xlsFile, Integer startLine, Integer rowLimit, Integer batchSize) {
+		Request2LLM document;
+		List<Request2LLM> documents = new ArrayList<>();
+		InputStream file = getFileFromResourceAsStream(xlsFile);
+		try (Workbook workbook = new XSSFWorkbook(file)){
+			List<String> nextLines = new ArrayList<>();
+			Question q = new Question(null);
+			Answer a = new Answer();
+			List<String> nextAnswers = new ArrayList<>();
+			
+			Sheet sheet = workbook.getSheetAt(0);
+			int batchCount = 0;
+			// Capture header info (system/user questions) once so we can create new Question objects per batch
+			List<String[]> headerSystemQuestions = new ArrayList<>();
+			String headerUserQuestion = null;
+			
+			// Calculate the effective start row based on startLine offset
+			// startLine is 1-based (user sees "line 1, line 2, etc."), so subtract 1 to get 0-based offset, then add CONTENT_INITIAL_LINE
+			int contentStartRow = ExcelConstants.CONTENT_INITIAL_LINE + (startLine != null && startLine > 0 ? startLine - 1 : 0);
+			
+			// Calculate the effective end row: rowLimit is also 1-based, so subtract 1 to get 0-based offset
+			// Otherwise process to the end of the file
+			int endRow = (rowLimit != null && rowLimit > 0) ? (ExcelConstants.CONTENT_INITIAL_LINE + rowLimit - 1) : Integer.MAX_VALUE;
+			
+			// Find the last row with data to check if startLine is beyond available content
+			int lastRowNum = sheet.getLastRowNum();
+			LOG.info("getDocument: startLine=" + startLine + ", rowLimit=" + rowLimit + ", contentStartRow=" + contentStartRow + ", endRow=" + endRow + ", lastRowNum=" + lastRowNum);
+			if (contentStartRow > lastRowNum) {
+				// startLine puts us beyond all available rows
+				LOG.info("startLine beyond available rows, returning empty list");
+				return documents;
+			}
+			
+			for (Row row : sheet) {
+				// Process header rows regardless of content start
+				if (isHeaderContent(row, "S")) {
+					// collect header system questions
+					headerSystemQuestions.add(getContentOnHeaderColumns(row, COL_INI, COL_FIN));
+					continue;
+				} else if (isHeaderContent(row, "Q")){
+					// capture header user question
+					headerUserQuestion = getContentOnCell(row, COL_INI);
+					continue;
+				}
+
+				// Skip rows before the calculated data start (accounts for startLine offset)
+				if (row.getRowNum() < contentStartRow) {
+					continue;
+				}
+
+			// Enforce rowLimit AFTER applying startLine offset. This prevents rows beyond the limit
+			// from being added to batches.
+			if (row.getRowNum() > endRow) {
+				// If there are pending lines that didn't yet form a complete batch, flush them as a final document
+				if (!nextLines.isEmpty()) {
+					Question qBatch = new Question(headerUserQuestion);
+					qBatch.setRowZeroSystemQuestions(headerSystemQuestions);
+					qBatch.setNextLines(nextLines);
+					Answer aBatch = new Answer();
+					aBatch.setNextLines(nextAnswers);
+					document = new Request2LLM(qBatch, aBatch, batchSize);
+					documents.add(document);
+				}
+				break;
+			}
 
 				// Treat as data row if primary content cell is non-empty (robust to missing numeric ID)
 				if (isDataRow(row)){

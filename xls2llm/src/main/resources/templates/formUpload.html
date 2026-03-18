@@ -1,20 +1,296 @@
 <html xmlns:th="https://www.thymeleaf.org">
 <head>
     <title>Excel File Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="file"],
+        input[type="number"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        #clearBtn {
+            background-color: #6c757d;
+        }
+        #clearBtn:hover {
+            background-color: #5a6268;
+        }
+        #progressContainer {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #progressContainer.active {
+            display: block;
+        }
+        #fileNameDisplay {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        #statusText {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        progress {
+            width: 100%;
+            height: 30px;
+            border-radius: 4px;
+        }
+        #percentageText {
+            text-align: center;
+            margin-top: 8px;
+            font-weight: bold;
+            color: #007bff;
+            font-size: 18px;
+        }
+        .error {
+            color: #dc3545;
+            padding: 10px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+        .error.show {
+            display: block;
+        }
+        #progressDetails {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+        }
+    </style>
 </head>
 <body>
-<h2>Upload Excel File</h2>
-<form method="POST" enctype="multipart/form-data" action="/upload">
-    <input type="file" name="file" accept=".xlsx" required />
-    
-    <!-- Added: numeric input to limit number of rows to process -->
-    <div>
-        <label for="rowLimit">Row limit (optional):</label>
-        <input type="number" id="rowLimit" name="rowLimit" min="1" placeholder="e.g. 100" />
+<div class="container">
+    <h2>Upload and Process Excel File</h2>
+    <form id="uploadForm" method="POST" enctype="multipart/form-data" action="/upload">
+        <div class="form-group">
+            <label for="file">Select Excel File:</label>
+            <input type="file" id="file" name="file" accept=".xlsx" required />
+        </div>
+        
+        <div class="form-group">
+            <label for="startLine">Start line (optional):</label>
+            <input type="number" id="startLine" name="startLine" min="0" placeholder="e.g. 0" />
+        </div>
+        
+        <div class="form-group">
+            <label for="rowLimit">Row limit (optional):</label>
+            <input type="number" id="rowLimit" name="rowLimit" min="1" placeholder="e.g. 100" />
+        </div>
+
+        <button type="submit" id="submitBtn">Upload and Process</button>
+        <button type="button" id="clearBtn" onclick="clearFormData()">Clear Form</button>
+    </form>
+
+    <div id="progressContainer">
+        <div id="fileNameDisplay"></div>
+        <div id="statusText">Processing... polling for progress</div>
+        <progress id="progressBar" value="0" max="100"></progress>
+        <div id="percentageText">0%</div>
+        <div id="progressDetails"></div>
     </div>
 
-    <button type="submit">Upload and Process</button>
-    
-</form>
+    <div class="error" id="errorDiv"></div>
+</div>
+
+<script>
+    const uploadForm = document.getElementById('uploadForm');
+    const progressContainer = document.getElementById('progressContainer');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const progressBar = document.getElementById('progressBar');
+    const percentageText = document.getElementById('percentageText');
+    const statusText = document.getElementById('statusText');
+    const submitBtn = document.getElementById('submitBtn');
+    const fileInput = document.getElementById('file');
+    const errorDiv = document.getElementById('errorDiv');
+    const progressDetails = document.getElementById('progressDetails');
+
+    let pollInterval = null;
+    let currentUploadId = null;
+
+    function generateUploadId() {
+        return Math.floor(Math.random() * 100000000);
+    }
+
+    function clearFormData() {
+        uploadForm.reset();
+        progressContainer.classList.remove('active');
+        errorDiv.classList.remove('show');
+        submitBtn.disabled = false;
+    }
+
+    async function pollProgress(uploadId) {
+        try {
+            const url = `/api/upload/${uploadId}/progress`;
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                console.log('===== PROGRESS POLL SUCCESS ===== uploadId=' + uploadId + ', response:', data);
+                progressBar.value = data.percentage;
+                percentageText.textContent = data.percentage + '%';
+                progressDetails.textContent = `${data.current} of ${data.total} items processed`;
+                return data.percentage < 100;
+            } else if (response.status === 404) {
+                console.warn('===== PROGRESS 404 ===== uploadId=' + uploadId + ' not found, retrying...');
+                return true;
+            } else {
+                console.warn('===== PROGRESS ERROR ===== uploadId=' + uploadId + ', status=' + response.status + ', statusText=' + response.statusText);
+                return true;
+            }
+        } catch (error) {
+            console.warn('===== PROGRESS EXCEPTION ===== uploadId=' + uploadId + ', error:', error);
+            return true;
+        }
+    }
+
+    uploadForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        console.log('Form submission started, preventing default behavior');
+        errorDiv.classList.remove('show');
+
+        if (!fileInput.files || fileInput.files.length === 0) {
+            errorDiv.textContent = 'Please select a file to upload';
+            errorDiv.classList.add('show');
+            return;
+        }
+
+        const fileName = fileInput.files[0].name;
+        currentUploadId = generateUploadId();
+        console.log('===== UPLOAD INIT ===== Generated uploadId:', currentUploadId, 'Type:', typeof currentUploadId);
+
+        fileNameDisplay.textContent = 'File: ' + fileName;
+        progressContainer.classList.add('active');
+        submitBtn.disabled = true;
+        progressBar.value = 0;
+        percentageText.textContent = '0%';
+        statusText.textContent = 'Processing... polling for progress';
+        progressDetails.textContent = 'Initializing...';
+
+        // Start polling for progress immediately
+        pollInterval = setInterval(async () => {
+            const stillProcessing = await pollProgress(currentUploadId);
+            if (!stillProcessing) {
+                clearInterval(pollInterval);
+            }
+        }, 500);
+
+        try {
+            const formData = new FormData(uploadForm);
+            formData.append('uploadId', currentUploadId.toString());
+            console.log('===== FORM DATA ===== uploadId appended:', currentUploadId.toString());
+            console.log('Form fields: file=' + (formData.has('file') ? 'YES' : 'NO') + 
+                        ', startLine=' + (formData.get('startLine') || 'empty') + 
+                        ', rowLimit=' + (formData.get('rowLimit') || 'empty') + 
+                        ', uploadId=' + (formData.get('uploadId') || 'empty'));
+
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            clearInterval(pollInterval);
+            console.log('===== SERVER RESPONSE ===== status:', response.status, response.statusText);
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                const contentDisposition = response.headers.get('content-disposition');
+                const fileNameMatch = contentDisposition ? contentDisposition.match(/filename="?([^"]+)"?/) : null;
+                const downloadFileName = fileNameMatch ? fileNameMatch[1] : 'result.xlsx';
+
+                // Final poll to show 100%
+                progressBar.value = 100;
+                percentageText.textContent = '100%';
+                statusText.textContent = 'Complete! Downloaded successfully.';
+                progressDetails.textContent = 'Processing finished - Ready for next upload';
+
+                // Trigger download
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = downloadFileName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                console.log('Download triggered for:', downloadFileName);
+
+                // Re-enable submit button after delay, keep form data for next upload
+                setTimeout(() => {
+                    submitBtn.disabled = false;
+                    progressContainer.classList.remove('active');
+                    console.log('===== UPLOAD COMPLETE ===== Form ready for next submission');
+                    // Do NOT reset form - keep parameters for user to reuse
+                }, 1000);
+            } else {
+                throw new Error('Server error: ' + response.status + ' ' + response.statusText);
+            }
+        } catch (error) {
+            clearInterval(pollInterval);
+            console.error('===== ERROR ===== during upload:', error);
+            errorDiv.textContent = 'Error: ' + error.message;
+            errorDiv.classList.add('show');
+            submitBtn.disabled = false;
+            progressContainer.classList.remove('active');
+        }
+    });
+</script>
 </body>
 </html>

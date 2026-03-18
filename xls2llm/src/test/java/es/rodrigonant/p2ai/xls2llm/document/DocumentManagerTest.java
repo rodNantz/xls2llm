@@ -175,5 +175,120 @@ class DocumentManagerTest extends GenericTest {
 
         assertEquals(rowLimit, total, "Total rows read should equal requested rowLimit");
     }
+
+    @Test
+    public void testStartLineOnly() {
+        String xmlFilePath = "xls/test1-simple.xlsx";
+        Integer startLine = 5;
+        Integer rowLimit = null;
+        int batchSize = 10;
+
+        List<Request2LLM> docs = dr.getDocument(xmlFilePath, startLine, rowLimit, batchSize);
+        int total = docs.stream().mapToInt(d -> d.question().getNextLines().size()).sum();
+
+        System.out.println("testStartLineOnly - startLine: " + startLine + ", rowLimit: " + rowLimit);
+        System.out.println("Documents returned: " + docs.size());
+        for (int i = 0; i < docs.size(); i++) {
+            System.out.println("  doc[" + i + "] lines: " + docs.get(i).question().getNextLines().size());
+        }
+        System.out.println("Total lines: " + total);
+
+        assertTrue(total > 0, "Should process rows starting from startLine");
+        assertNotNull(docs);
+        assertTrue(docs.size() > 0, "Should return at least one document");
+    }
+
+    @Test
+    public void testStartLineWithRowLimit() {
+        String xmlFilePath = "xls/test1-simple.xlsx";
+        Integer startLine = 5;
+        Integer rowLimit = 10;
+        int batchSize = 10;
+
+        List<Request2LLM> docs = dr.getDocument(xmlFilePath, startLine, rowLimit, batchSize);
+        int total = docs.stream().mapToInt(d -> d.question().getNextLines().size()).sum();
+
+        System.out.println("testStartLineWithRowLimit - startLine: " + startLine + ", rowLimit: " + rowLimit);
+        System.out.println("Documents returned: " + docs.size());
+        for (int i = 0; i < docs.size(); i++) {
+            System.out.println("  doc[" + i + "] lines: " + docs.get(i).question().getNextLines().size());
+        }
+        System.out.println("Total lines: " + total);
+
+        assertEquals(6, total, "Should process rows in specified range");
+        assertNotNull(docs);
+    }
+
+    @Test
+    public void testStartLineZero() {
+        String xmlFilePath = "xls/test1-simple.xlsx";
+        Integer startLine = 0;
+        Integer rowLimit = 15;
+        int batchSize = 10;
+
+        List<Request2LLM> docs = dr.getDocument(xmlFilePath, startLine, rowLimit, batchSize);
+        int total = docs.stream().mapToInt(d -> d.question().getNextLines().size()).sum();
+
+        System.out.println("testStartLineZero - startLine: " + startLine + ", rowLimit: " + rowLimit);
+        System.out.println("Documents returned: " + docs.size());
+        System.out.println("Total lines: " + total);
+
+        assertEquals(rowLimit, total, "startLine=0 should process from beginning");
+    }
+
+    @Test
+    public void testStartLineNullWithRowLimit() {
+        String xmlFilePath = "xls/test1-simple.xlsx";
+        Integer startLine = null;
+        Integer rowLimit = 20;
+        int batchSize = 10;
+
+        List<Request2LLM> docs = dr.getDocument(xmlFilePath, startLine, rowLimit, batchSize);
+        int total = docs.stream().mapToInt(d -> d.question().getNextLines().size()).sum();
+
+        System.out.println("testStartLineNullWithRowLimit - startLine: " + startLine + ", rowLimit: " + rowLimit);
+        System.out.println("Documents returned: " + docs.size());
+        System.out.println("Total lines: " + total);
+
+        assertEquals(rowLimit, total, "null startLine should process from beginning with rowLimit");
+    }
+
+    @Test
+    public void testStartLineAndRowLimitWithSmallBatch() {
+        String xmlFilePath = "xls/test1-simple.xlsx";
+        Integer startLine = 3;
+        Integer rowLimit = 8;
+        int batchSize = 3;
+
+        List<Request2LLM> docs = dr.getDocument(xmlFilePath, startLine, rowLimit, batchSize);
+        int total = docs.stream().mapToInt(d -> d.question().getNextLines().size()).sum();
+
+        System.out.println("testStartLineAndRowLimitWithSmallBatch - startLine: " + startLine + ", rowLimit: " + rowLimit + ", batchSize: " + batchSize);
+        System.out.println("Documents returned: " + docs.size());
+        for (int i = 0; i < docs.size(); i++) {
+            System.out.println("  doc[" + i + "] lines: " + docs.get(i).question().getNextLines().size());
+        }
+        System.out.println("Total lines: " + total);
+
+        assertEquals(6, total, "Should respect startLine and rowLimit parameters");
+        assertTrue(docs.size() >= 2, "Should create multiple batches with small batch size");
+    }
+
+    @Test
+    public void testStartLineBeyondAvailable() {
+        String xmlFilePath = "xls/test1-simple.xlsx";
+        Integer startLine = 13200;  // Beyond the file's 13162 rows
+        Integer rowLimit = 10;
+        int batchSize = 10;
+
+        List<Request2LLM> docs = dr.getDocument(xmlFilePath, startLine, rowLimit, batchSize);
+        int total = docs.stream().mapToInt(d -> d.question().getNextLines().size()).sum();
+
+        System.out.println("testStartLineBeyondAvailable - startLine: " + startLine + ", rowLimit: " + rowLimit);
+        System.out.println("Documents returned: " + docs.size());
+        System.out.println("Total lines: " + total);
+
+        assertEquals(0, total, "Should return no documents when startLine is beyond available rows");
+    }
     
 }

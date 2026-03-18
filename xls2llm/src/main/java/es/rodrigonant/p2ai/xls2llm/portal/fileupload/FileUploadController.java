@@ -10,6 +10,7 @@ import es.rodrigonant.p2ai.xls2llm.model.Request2LLM;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategorizationResponse;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CommentRow;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategoryCol;
+import es.rodrigonant.p2ai.xls2llm.service.ProgressTracker;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.InputStreamResource;
@@ -26,9 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.*;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Controller
 public class FileUploadController {
@@ -42,24 +41,24 @@ public class FileUploadController {
     @Qualifier("gpt-service")
     private LLMService llmService;
 
+    @Autowired
+    private ProgressTracker progressTracker;
+
     @GetMapping("/")
     public String index() {
         return "formUpload";
-    }
-
-    private Map<Long, ProgressBar> progressBars = new HashMap<>();
-    
-    @GetMapping("/upload")
-    public ProgressBar retrieveProgressPct(long uploadId) {
-        return progressBars.get(uploadId);
     }
     
     private static final int batchSize = 10;
     
     @PostMapping("/upload")
-    public ResponseEntity<InputStreamResource> handleFileUpload(@RequestParam("file") MultipartFile file, @RequestParam(value = "rowLimit", required = false) Integer rowLimit, Model model) throws IOException {
+    public ResponseEntity<InputStreamResource> handleFileUpload(@RequestParam("file") MultipartFile file, @RequestParam(value = "uploadId", required = false) Long uploadId, @RequestParam(value = "startLine", required = false) Integer startLine, @RequestParam(value = "rowLimit", required = false) Integer rowLimit, Model model) throws IOException {
     	// Save uploaded file to temp location
-    	long uploadId = (long) (Math.random() * 100000);
+    	boolean idWasNull = (uploadId == null);
+    	if (uploadId == null) {
+    		uploadId = (long) (Math.random() * 100000000);
+    	}
+    	LOG.info("=== UPLOAD START === uploadId=" + uploadId + " (provided=" + !idWasNull + "), startLine=" + startLine + ", rowLimit=" + rowLimit);
         File tempInput = File.createTempFile("input", ".xlsx");
         file.transferTo(tempInput);
         String inputPath = tempInput.getAbsolutePath();
@@ -68,10 +67,17 @@ public class FileUploadController {
         // Process file (reuse logic from CommandLineRunnerV1)
         // If rowLimit is null or not positive, pass null to process all rows
         Integer effectiveLimit = (rowLimit != null && rowLimit > 0) ? rowLimit : null;
+        Integer effectiveStart = (startLine != null && startLine > 0) ? startLine : null;
 //        Request2LLM req = dr.getDocument(inputPath, effectiveLimit);
-        List<Request2LLM> reqs = dr.getDocument(inputPath, effectiveLimit, batchSize);
-        ProgressBar progress = new ProgressBar(getRequestSize(reqs, effectiveLimit));
-        progressBars.put(uploadId, progress);
+        List<Request2LLM> reqs = dr.getDocument(inputPath, effectiveStart, effectiveLimit, batchSize);
+        ProgressBar progress = progressTracker.createProgress(uploadId, getRequestSize(reqs, null));
+        
+        // rowOffset is 0-based index from start of data. When passed to Input2xls,
+        // it will be converted to Excel row by adding CONTENT_INITIAL_LINE in setContentIntoXls.
+        // startLine is 1-based user input, so convert: startLine=15 -> index=14
+        int rowOffset = (effectiveStart != null && effectiveStart > 0) ? effectiveStart - 1 : 0;
+        int currentRowOffset = rowOffset;
+        
         // for every 10 rows: call LLM and write output
         int i = 0;
 //        List<Question> qsts = req.question().split(batchSize);
@@ -87,8 +93,8 @@ public class FileUploadController {
                     if (cr.getComments() != null) commentsCount += cr.getComments().size();
                 }
             }
-            LOG.info("Batch starting at offset=" + i + ": responses.count=" + responsesCount + ", comments.count=" + commentsCount);
-            Input2xls input = Input2xls.fromCategorizationResponseList(responses, i);
+            LOG.info("Batch starting at rowOffset=" + currentRowOffset + ": responses.count=" + responsesCount + ", comments.count=" + commentsCount);
+            Input2xls input = Input2xls.fromCategorizationResponseList(responses, currentRowOffset);
             // Log Input2xls entries
             Enumeration<Integer> rowsDbg = input.getRowIndexes();
             StringBuilder sb = new StringBuilder();
@@ -106,12 +112,12 @@ public class FileUploadController {
             }
             LOG.info("Prepared Input2xls entries: " + sb.toString());
             // Use the original input file only for the first write; subsequent writes must use the last output
-            String sourcePath = (i == 0) ? inputPath : outputPath;
+            String sourcePath = (currentRowOffset == rowOffset && processed > 0) ? inputPath : outputPath;
             dr.writeDocument(sourcePath, outputPath, input);
             // Advance the offset by the actual number of comment rows written (use input rows count)
-             i += processed;
-             progress.setState(i);
-             LOG.info("Progress: " + i);
+            currentRowOffset += processed;
+            progressTracker.updateProgress(uploadId, currentRowOffset - rowOffset);
+            LOG.info("Progress: " + (currentRowOffset - rowOffset) + ", Current row offset: " + currentRowOffset);
         }
         
         // Return the written file as a download
@@ -131,8 +137,8 @@ public class FileUploadController {
 		for (Request2LLM r : reqs) {
 			size += r.question().getNextLines().size();
 		}
-		if (limit == null) return size;
-		return size > limit ? limit : size;
+		// DocumentManager already applied the limit, so just return actual size
+		return size;
 	}
     
 }
