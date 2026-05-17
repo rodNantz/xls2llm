@@ -1,0 +1,29 @@
+spring.application.name=xls2llm
+
+# OpenAI Production Configuration
+# Set these environment variables instead of hardcoding:
+# export LLM_OPENAI_URL=https://api.openai.com/v1
+# export LLM_OPENAI_KEY=sk-...
+# export LLM_OPENAI_ORG=org-...
+# export LLM_OPENAI_PROJECT=proj-...
+llm.openai.url=${LLM_OPENAI_URL:https://api.openai.com/v1}
+llm.openai.key=${LLM_OPENAI_KEY:}
+llm.openai.org=${LLM_OPENAI_ORG:}
+llm.openai.project=${LLM_OPENAI_PROJECT:}
+
+# OpenAI Test Configuration (local testing)
+llm.openai.test.url=http://localhost:1234/v1
+llm.openai.test.key=1
+llm.openai.test.org=rodrigonantes
+llm.openai.test.project=xls2llm
+
+# Custom Validation Configuration
+custom.valid.categories=V1,V1.1,V1.2,V2,V2.1,V3
+custom.valid.codes=00,01,02,03,04,05,06,07,99
+
+# File Upload Configuration
+spring.servlet.multipart.max-file-size=10MB
+spring.servlet.multipart.max-request-size=10MB
+
+# Logging Configuration
+logging.level.org.springframework.boot.autoconfigure.logging=INFO
