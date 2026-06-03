@@ -1,0 +1,15 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "command": {
+    "codificar-nordeste": {
+      "description": "Codifica comentários sobre Nordeste nas eleições brasileiras de 2022.",
+      "template": "Use a skill analise-conteudo-nordeste-eleicoes-2022 para codificar comentários sobre o Nordeste e nordestinos nas eleições presidenciais brasileiras de 2022. Classifique cada item segundo POS_NOR, AC_DOM, FD_DOM, ADVE, ADVE_TIPO e POSIC_COMENT, preservando o texto original, justificativa curta, trechos gatilho e marcação de ambiguidade.\n\nEntrada ou instruções do usuário:\n$ARGUMENTS"
+    }
+  },
+  "permission": {
+    "edit": "ask",
+    "bash": {
+      "*": "ask"
+    }
+  }
+}
