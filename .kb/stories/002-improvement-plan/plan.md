@@ -110,6 +110,33 @@ O perfil deve incluir unidade de análise, predominância, códigos válidos, bl
 
 Não solicitar cadeia de pensamento extensa. A auditoria deve usar justificativa curta, trechos gatilho, regra aplicada e resultado das validações.
 
+### 5.1. Contexto remoto e OpenAI
+
+As chamadas da API devem ser tratadas como independentes. O modelo não deve depender de uma conversa longa para manter memória entre lotes.
+
+Usar três camadas de contexto:
+
+1. **Prompt-base estável:** regras críticas, formato JSON, não inferência e bloqueios;
+2. **Contexto recuperável:** codebook completo, documentação e exemplos;
+3. **Dados variáveis:** os 10 comentários do lote.
+
+O prompt-base deve permanecer idêntico e vir antes dos comentários. Isso permite aproveitar prompt caching quando disponível, reduzindo o custo dos tokens de entrada. O cache não substitui o armazenamento do contexto nem deve ser tratado como memória permanente.
+
+Para documentos e exemplos, avaliar o uso da `Responses API` com `file_search` e um `vector store` por projeto. Alternativamente, implementar retrieval próprio com banco, JSONL ou índice vetorial. Em ambos os casos, recuperar somente as regras e exemplos relevantes para o lote.
+
+Regras críticas, como `V1 = 99 -> V1.1 = 999 e V1.2 = 999`, devem estar no prompt-base e ser aplicadas também pelo validador local. Não depender exclusivamente do retrieval para regras estruturais.
+
+O contexto recuperado e os exemplos utilizados devem ser registrados nos logs, junto com a versão e o hash do perfil. Não enviar novamente a planilha inteira, respostas anteriores ou logs completos.
+
+Evolução recomendada:
+
+1. estabilizar o prompt-base para caching;
+2. versionar o perfil metodológico;
+3. implementar validação local;
+4. migrar a classificação para a `Responses API`, se necessário para usar ferramentas;
+5. adicionar `file_search` ou retrieval próprio;
+6. comparar custo e qualidade com e sem retrieval.
+
 ## 6. Corpus e lotes
 
 Representar cada comentário com ID e linha de origem:
@@ -126,7 +153,40 @@ Preservar o texto original. Uma eventual versão normalizada deve ser armazenada
 
 Detectar antes da chamada itens vazios, truncados, apenas URL, apenas emoji, duplicados e sem conteúdo suficiente.
 
-O lote deve ser calculado por orçamento de tokens, considerando contexto, comentários, resposta esperada, limite do modelo e margem de segurança. Exemplos few-shot devem ser selecionados e versionados, não incluídos indiscriminadamente.
+### 6.1. Estratégia inicial de lotes
+
+Para simplificar a primeira versão, usar lotes fixos de **10 comentários por chamada**, mantendo o comportamento atual da aplicação.
+
+Essa escolha facilita:
+
+- implementação e depuração;
+- comparação com os testes existentes;
+- auditoria de cada lote;
+- identificação de itens ausentes ou duplicados;
+- retry de grupos pequenos;
+- controle inicial de custo e latência.
+
+Mesmo com tamanho fixo, cada comentário deve possuir `commentId` e a resposta deve ser validada contra os IDs recebidos.
+
+O tamanho 10 deve ser tratado como parâmetro configurável, não como regra permanente. Após a coleta de métricas, avaliar lotes adaptativos por orçamento de tokens, considerando contexto, comentários, resposta esperada, limite do modelo e margem de segurança.
+
+Estratégia futura:
+
+- comentários curtos: lotes maiores;
+- comentários longos ou complexos: lotes menores;
+- itens ambíguos ou inválidos: retry seletivo ou processamento individual.
+
+Exemplo de fluxo:
+
+```text
+10 comentários
+  -> validação
+  -> itens válidos: aceitos
+  -> itens inconsistentes: retry em lote menor
+  -> itens ambíguos: revisão humana ou chamada individual
+```
+
+Exemplos few-shot devem ser selecionados e versionados, não incluídos indiscriminadamente.
 
 Uma segunda passagem deve ser usada somente para respostas inválidas, itens ausentes ou duplicados, inconsistências, ambiguidades, baixa confiança ou conflitos entre regras.
 
@@ -218,6 +278,24 @@ Status finais: `APROVADO`, `APROVADO_COM_ALERTAS` ou `REVISAO_MANUAL`.
 
 ## 9. Amostra manual e avaliação
 
+### 9.1. Planilha-base de testes manuais
+
+A planilha `xls2llm/src/main/resources/xls/test1-simple.xlsx` é a referência principal para testes manuais do fluxo completo. Ela deve ser preservada como fixture estável e usada para verificar:
+
+- leitura da planilha;
+- extração do prompt e dos comentários;
+- divisão em lotes de 10 itens;
+- chamadas ao LLM;
+- progresso da execução;
+- validação das respostas;
+- escrita do XLSX de saída;
+- preservação das linhas e colunas;
+- download pela interface web.
+
+Alterações nessa planilha devem ser evitadas. Se for necessário mudar seu conteúdo, criar uma nova versão ou fixture, registrar a motivação e atualizar os testes afetados.
+
+### 9.2. Amostra dourada
+
 O arquivo `xls2llm/src/main/resources/xls/amostra-1.xlsx`, preenchido manualmente com dez linhas, deve ser a primeira amostra dourada (`gold sample`).
 
 Usos:
@@ -230,7 +308,7 @@ Usos:
 - detectar regressões;
 - medir tokens, custo e divergências.
 
-As dez linhas não constituem dados suficientes para fine-tuning ou reinforcement learning. Inicialmente, devem ser usadas como referência supervisionada e teste de regressão.
+As dez linhas não constituem dados suficientes para fine-tuning ou reinforcement learning. Inicialmente, devem ser usadas como referência supervisionada e teste de regressão. A `amostra-1.xlsx` complementa, mas não substitui, a `test1-simple.xlsx` nos testes manuais do fluxo.
 
 Fluxo recomendado:
 
@@ -349,9 +427,10 @@ Antes de escrever, conferir quantidade, identidade, ausência e duplicidade dos 
 1. Criar perfil versionado baseado na skill.
 2. Criar corpus interno com IDs estáveis.
 3. Separar contexto permanente e dados.
-4. Implementar saída por comentário.
-5. Implementar validador de domínios e dependências.
-6. Aplicar pós-validação visual no XLSX.
+4. Estabilizar o prompt-base para prompt caching.
+5. Implementar saída por comentário.
+6. Implementar validador de domínios e dependências.
+7. Aplicar pós-validação visual no XLSX.
 
 ### Fase B — avaliação e qualidade
 
@@ -366,8 +445,9 @@ Antes de escrever, conferir quantidade, identidade, ausência e duplicidade dos 
 1. Criar IDs de execução, lote e chamada.
 2. Registrar request e response integrais em JSONL.
 3. Registrar tokens, custo, latência e erros.
-4. Criar relatório por execução.
-5. Definir retenção e proteção.
+4. Registrar contexto recuperado, exemplos e hashes usados.
+5. Criar relatório por execução.
+6. Definir retenção e proteção.
 
 ### Fase D — eficiência operacional
 
@@ -396,6 +476,7 @@ Antes de escrever, conferir quantidade, identidade, ausência e duplicidade dos 
 - `V1 = 99` força V1.1 e V1.2 para `999` e gera registro de validação;
 - prompts e respostas integrais são armazenados;
 - tokens, custo, qualidade e latência são medidos;
+- `test1-simple.xlsx` é usada como fixture principal dos testes manuais;
 - `amostra-1.xlsx` funciona como teste de regressão;
 - casos ambíguos chegam à revisão humana;
 - a stakeholder executa o fluxo pela interface web;
