@@ -139,11 +139,11 @@ Evolução recomendada:
 
 ## 6. Corpus e lotes
 
-Representar cada comentário com ID e linha de origem:
+Representar cada comentário com ID estável derivado do deslocamento da linha de dados em relação à primeira linha de conteúdo (`0` para a primeira linha) e preservar a linha XLSX original para auditoria:
 
 ```json
 {
-  "comment_id": "row-000123",
+  "commentId": 122,
   "source_row": 123,
   "text": "texto original"
 }
@@ -196,7 +196,7 @@ Retornar uma classificação por comentário, com IDs estáveis:
 
 ```json
 {
-  "comment_id": "row-000123",
+  "commentId": 122,
   "codes": {
     "V1": "00",
     "V1.1": "02",
@@ -218,15 +218,23 @@ Estados possíveis: `SUCCESS`, `INVALID_SCHEMA`, `MISSING_ITEM`, `DUPLICATE_ITEM
 
 O validador deve ser independente do LLM e verificar campos obrigatórios, IDs, cobertura, duplicidades, domínios, justificativa, trechos gatilho, dependências e regras de inferência.
 
-### 8.1. Domínios atuais
+### 8.1. Semântica de “não se aplica”
+
+`99` e `999` representam o mesmo estado de negócio: `NOT_APPLICABLE`. Esse estado é semântico, não um código de categoria. A lógica de classificação, bloqueios e consistência deve comparar o estado normalizado, sem depender da representação numérica.
+
+A representação persistida deve ser definida pela configuração do projeto/coluna (`99` ou `999`). Ao importar, preservar o valor original para auditoria e normalizá-lo para validação; ao exportar, serializar `NOT_APPLICABLE` conforme a configuração de destino. Outros códigos de classificação permanecem strings de dois dígitos, preservando zeros à esquerda.
+
+### 8.2. Domínios atuais
+
+O domínio lógico usa strings de dois dígitos para códigos de classificação e `NOT_APPLICABLE` para o estado não aplicável:
 
 | Coluna | Códigos válidos |
 |---|---|
-| V1 | `00`, `01`, `99` |
-| V1.1 | `01`, `02`, `03`, `04`, `05`, `99` |
-| V1.2 | `01`, `02`, `03`, `04`, `99` |
-| V2 | `0`, `1` |
-| V2.1 | `01`, `02`, `03`, `04`, `05`, `06`, `07`, `999`, `0` |
+| V1 | `00`, `01`, `NOT_APPLICABLE` |
+| V1.1 | `01`, `02`, `03`, `04`, `05`, `NOT_APPLICABLE` |
+| V1.2 | `01`, `02`, `03`, `04`, `NOT_APPLICABLE` |
+| V2 | `00`, `01` |
+| V2.1 | `00`, `01`, `02`, `03`, `04`, `05`, `06`, `07`, `NOT_APPLICABLE` |
 | V3 | `00`, `01`, `02` |
 
 Qualquer outro valor deve:
@@ -239,7 +247,7 @@ Qualquer outro valor deve:
 
 A cor vermelha indica erro; não é uma correção silenciosa.
 
-### 8.2. Bloqueio de `V1`
+### 8.3. Bloqueio de `V1`
 
 Classificar `V1` primeiro. Se:
 
@@ -256,7 +264,7 @@ V1.2 = 999
 
 V1.1 e V1.2 não são relevantes nesse caso. Qualquer valor diferente de `999` é inconsistência. Preservar o valor bruto e registrar o valor esperado.
 
-### 8.3. Dependências padrão
+### 8.4. Dependências padrão
 
 - `V1 = 00` exige V1.1 válido e `V1.2 = 999`;
 - `V1 = 01` exige V1.2 válido e `V1.1 = 999`;
