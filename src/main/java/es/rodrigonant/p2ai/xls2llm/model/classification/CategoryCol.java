@@ -18,7 +18,7 @@ public class CategoryCol {
 	@JsonProperty
 	private CategoryType evaluationType;
 	@JsonProperty
-	@Pattern(regexp = "\\d{2}", message = "Code must be two digits")
+	@Pattern(regexp = "(?:\\d{2}|999)", message = "Code must be two digits or the configured 999 sentinel")
 	private String code;
 	@JsonProperty
 	private String description;
@@ -62,7 +62,7 @@ public class CategoryCol {
 	public static CategoryCol fromV2_1alt(double id, V2_1alt alt) {
 		CategoryCol col = new CategoryCol();
 		col.setCategory(id);
-		col.setEvaluationType(CategoryType.V2_1ALT);
+		col.setEvaluationType(CategoryType.V3ALT);
 		col.setCode(alt.getCode().toString());
 		col.setDescription(alt.getDescription());
 		return col;

@@ -20,12 +20,19 @@ import es.rodrigonant.p2ai.xls2llm.llmapi.LLMService;
 import es.rodrigonant.p2ai.xls2llm.model.Question;
 import es.rodrigonant.p2ai.xls2llm.model.Request2LLM;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategorizationResponse;
+import es.rodrigonant.p2ai.xls2llm.validation.ProjectProfileLoader;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import jakarta.annotation.PostConstruct;
 
 public abstract class BaseService implements LLMService {
 	
 	protected OpenAIClient client;
 	protected String baseUrl;
+	@Autowired
+	private ProjectProfileLoader profileLoader;
+	@Value("${llm.model:gpt-4.1}")
+	private String modelName;
 	private static final Logger LOG = LoggerFactory.getLogger(BaseService.class);
 	
 	@PostConstruct
@@ -56,7 +63,7 @@ public abstract class BaseService implements LLMService {
 		LOG.debug("Message: {}", userMessage);
 		ChatCompletionCreateParams params = ChatCompletionCreateParams.builder()
 		        .addUserMessage(userMessage)
-		        .model(ChatModel.GPT_4_1)
+		        .model(ChatModel.of(modelName))
 		        .build();
 		
 		ChatCompletion response = client.chat().completions().create(params);
@@ -96,10 +103,12 @@ public abstract class BaseService implements LLMService {
 		LOG.debug("SystemMessage length: {}", systemMessage.length());
 		LOG.debug("UserMessage length: {}", userMessage.length());
 		
+		String stableProfile = profileLoader == null ? "" : profileLoader.getProfile().instructions();
+		String combinedSystemMessage = stableProfile + "\n\n" + systemMessage;
 		StructuredChatCompletionCreateParams<CategorizationResponse> params = ChatCompletionCreateParams.builder()
-		        .addSystemMessage(systemMessage)
+		        .addSystemMessage(combinedSystemMessage)
 				.addUserMessage(userMessage)
-		        .model(ChatModel.GPT_4_1)
+		        .model(ChatModel.of(modelName))
 		        .responseFormat(CategorizationResponse.class)
 		        .build();
 		
@@ -117,6 +126,11 @@ public abstract class BaseService implements LLMService {
 			}
 		}
 		return response;
+	}
+
+	@Override
+	public String getModelName() {
+		return modelName;
 	}
 	
 }

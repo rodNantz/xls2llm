@@ -17,4 +17,5 @@ public interface LLMService {
 	List<CategorizationResponse> promptCategorization(Question qst, List<CategorizationResponse> listToChg);
 	
 	String setupProperties();
+	String getModelName();
 }

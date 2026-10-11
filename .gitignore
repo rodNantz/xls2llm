@@ -4,6 +4,9 @@ api.log
 
 HELP.md
 target/
+!target/
+target/*
+!target/run-and-open.bat
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/

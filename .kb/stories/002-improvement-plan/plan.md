@@ -288,7 +288,7 @@ Status finais: `APROVADO`, `APROVADO_COM_ALERTAS` ou `REVISAO_MANUAL`.
 
 ### 9.1. Planilha-base de testes manuais
 
-A planilha `xls2llm/src/main/resources/xls/test1-simple.xlsx` é a referência principal para testes manuais do fluxo completo. Ela deve ser preservada como fixture estável e usada para verificar:
+A planilha `src/main/resources/xls/test1-simple.xlsx` é a referência principal para testes manuais do fluxo completo. Ela deve ser preservada como fixture estável e usada para verificar:
 
 - leitura da planilha;
 - extração do prompt e dos comentários;
@@ -304,7 +304,7 @@ Alterações nessa planilha devem ser evitadas. Se for necessário mudar seu con
 
 ### 9.2. Amostra dourada
 
-O arquivo `xls2llm/src/main/resources/xls/amostra-1.xlsx`, preenchido manualmente com dez linhas, deve ser a primeira amostra dourada (`gold sample`).
+O arquivo `src/main/resources/xls/amostra-1.xlsx`, preenchido manualmente com dez linhas, deve ser a primeira amostra dourada (`gold sample`).
 
 Usos:
 
@@ -430,15 +430,15 @@ Antes de escrever, conferir quantidade, identidade, ausência e duplicidade dos 
 
 ## 14. Fases de implementação
 
-### Fase A — segurança metodológica
+### Fase A – segurança metodológica
 
-1. Criar perfil versionado baseado na skill.
-2. Criar corpus interno com IDs estáveis.
-3. Separar contexto permanente e dados.
-4. Estabilizar o prompt-base para prompt caching.
-5. Implementar saída por comentário.
-6. Implementar validador de domínios e dependências.
-7. Aplicar pós-validação visual no XLSX.
+1. [x] Criar perfil versionado baseado na skill (`src/main/resources/profiles/nordeste-eleicoes-2022/1.0.0.json`).
+2. [x] Carregar comentários em lotes com IDs estáveis baseados na linha de origem.
+3. [x] Separar instruções permanentes do perfil das instruções da planilha e dados do lote.
+4. [x] Estabilizar as instruções metodológicas permanentes antes dos comentários.
+5. [x] Retornar resultado estruturado por comentário, com justificativa, trechos-gatilho e estado de ambiguidade.
+6. [x] Implementar validação local de IDs, domínios e dependências.
+7. [x] Aplicar pós-validação visual no XLSX, preservando valores inválidos e destacando inconsistências.
 
 ### Fase B — avaliação e qualidade
 
@@ -447,6 +447,12 @@ Antes de escrever, conferir quantidade, identidade, ausência e duplicidade dos 
 3. Comparar prompts sem exemplos, metodológicos e few-shot.
 4. Medir qualidade, tokens e custo.
 5. Implementar segunda passagem seletiva.
+
+#### Follow-up — primeira execução validada (2026-10-11)
+
+- No arquivo `output-input7790794723815139089.xlsx`, apenas **1 de 100 linhas passou** na validação; as outras **99 foram marcadas como `N`**. A taxa registrada foi de **1,00%**.
+- A planilha não informa os motivos por linha. Antes de ajustar prompt ou perfil, instrumentar/exportar os motivos das falhas (domínio, dependência, variável ausente, justificativa/trechos ausentes ou ambiguidade) e revisar uma amostra manualmente.
+- Reavaliar a taxa após essa análise e registrar os resultados por variável e motivo, sem tratar automaticamente `N` como erro de classificação confirmado.
 
 ### Fase C — observabilidade
 

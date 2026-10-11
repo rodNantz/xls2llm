@@ -16,6 +16,10 @@ import es.rodrigonant.p2ai.xls2llm.model.classification.CategorizationResponse;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CommentRow;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategoryCol;
 import es.rodrigonant.p2ai.xls2llm.service.ProgressTracker;
+import es.rodrigonant.p2ai.xls2llm.validation.ClassificationValidator;
+import es.rodrigonant.p2ai.xls2llm.validation.ProjectProfile;
+import es.rodrigonant.p2ai.xls2llm.validation.ProjectProfileLoader;
+import es.rodrigonant.p2ai.xls2llm.validation.ClassificationResponseReconciler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.InputStreamResource;
@@ -31,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -51,6 +56,15 @@ public class FileUploadController {
     @Autowired
     private ProgressTracker progressTracker;
 
+    @Autowired
+    private ClassificationValidator classificationValidator;
+
+    @Autowired
+    private ProjectProfileLoader profileLoader;
+
+    @Autowired
+    private ClassificationResponseReconciler responseReconciler;
+
     @GetMapping("/")
     public String index() {
         return "formUpload";
@@ -62,9 +76,10 @@ public class FileUploadController {
     public ResponseEntity<?> handleFileUpload(@RequestParam("file") MultipartFile file, @RequestParam(value = "uploadId", required = false) Long uploadId, @RequestParam(value = "startLine", required = false) Integer startLine, @RequestParam(value = "rowLimit", required = false) Integer rowLimit, Model model) throws IOException {
     	// Save uploaded file to temp location
     	boolean idWasNull = (uploadId == null);
-    	if (uploadId == null) {
+     if (uploadId == null) {
     		uploadId = (long) (Math.random() * 100000000);
-    	}
+     }
+        Instant executionStartedAt = Instant.now();
     	LOG.info("=== UPLOAD START === uploadId=" + uploadId + " (provided=" + !idWasNull + "), startLine=" + startLine + ", rowLimit=" + rowLimit);
         File tempInput = File.createTempFile("input", ".xlsx");
         file.transferTo(tempInput);
@@ -89,48 +104,54 @@ public class FileUploadController {
         int i = 0;
 //        List<Question> qsts = req.question().split(batchSize);
         List<CategorizationResponse> responses = new ArrayList<>();
+        int validatedRows = 0;
+        int successfulRows = 0;
+        int missingResultRows = 0;
+        int unexpectedResultIds = 0;
+        boolean llmUnavailable = false;
         for (Request2LLM req : reqs) {
-        	// Call LLM and capture the returned categorization responses for this batch
-            try {
-                responses = llmService.promptCategorization(req);
-            } catch (RateLimitException ex) {
-                LOG.error("OpenAI rate/quota limit for uploadId=" + uploadId + ": " + ex.getMessage());
-                progressTracker.removeProgress(uploadId);
-                return llmError(HttpStatus.TOO_MANY_REQUESTS,
-                        "The OpenAI API rate or credit limit has been reached. Check your API usage or add credits at https://platform.openai.com/settings/organization/billing/.");
-            } catch (UnauthorizedException ex) {
-                LOG.error("OpenAI rejected the API credentials for uploadId=" + uploadId + ": " + ex.getMessage());
-                progressTracker.removeProgress(uploadId);
-                return llmError(HttpStatus.BAD_GATEWAY,
-                        "The AI service rejected its API credentials. Check the OpenAI API key configured for the application.");
-            } catch (OpenAIInvalidDataException ex) {
-                LOG.error("OpenAI response could not be parsed for uploadId=" + uploadId + ": " + ex.getMessage());
-                progressTracker.removeProgress(uploadId);
-                return llmError(HttpStatus.BAD_GATEWAY,
-                        "The AI service returned a response that could not be processed. Please try again with fewer rows.");
-            } catch (OpenAIServiceException ex) {
-                LOG.error("OpenAI service error for uploadId=" + uploadId + ": " + ex.getMessage());
-                progressTracker.removeProgress(uploadId);
-                return llmError(HttpStatus.BAD_GATEWAY,
-                        "The AI service could not complete the request. Please try again later.");
-            } catch (OpenAIException ex) {
-                LOG.error("OpenAI request failed for uploadId=" + uploadId + ": " + ex.getMessage());
-                progressTracker.removeProgress(uploadId);
-                return llmError(HttpStatus.BAD_GATEWAY,
-                        "The AI service is unavailable or could not process the request. Please try again later.");
-            } catch (RuntimeException ex) {
-                LOG.error("LLM request failed for uploadId=" + uploadId + ": " + ex.getMessage());
-                progressTracker.removeProgress(uploadId);
-                return llmError(HttpStatus.BAD_GATEWAY,
-                        "AI processing could not be completed. Please try again later.");
+            if (!llmUnavailable) {
+                try {
+                    responses = llmService.promptCategorization(req);
+                } catch (RuntimeException ex) {
+                    llmUnavailable = true;
+                    responses = List.of();
+                    LOG.error("LLM failed for uploadId=" + uploadId
+                            + "; remaining comments will be marked missing: " + ex.getMessage());
+                }
+            } else {
+                responses = List.of();
             }
-            try {
-                validateResponseIds(req.question(), responses);
-            } catch (IllegalArgumentException ex) {
-                LOG.error("Invalid LLM response for uploadId=" + uploadId + ": " + ex.getMessage());
-                progressTracker.removeProgress(uploadId);
-                return llmError(HttpStatus.BAD_GATEWAY,
-                        "The AI service returned incomplete or inconsistent classifications. Please retry the upload.");
+            ClassificationResponseReconciler.Result reconciliation = responseReconciler
+                    .reconcile(req.question(), responses);
+            responses = reconciliation.responses();
+            missingResultRows += reconciliation.missingIds().size();
+            unexpectedResultIds += reconciliation.unexpectedIds().size();
+            if (!reconciliation.missingIds().isEmpty() || !reconciliation.duplicateIds().isEmpty()
+                    || !reconciliation.unexpectedIds().isEmpty()) {
+                LOG.info("LLM response reconciliation for uploadId=" + uploadId + ": missing="
+                        + reconciliation.missingIds() + ", duplicate=" + reconciliation.duplicateIds()
+                        + ", unexpected=" + reconciliation.unexpectedIds());
+            }
+            Map<Long, List<ClassificationValidator.Issue>> validationIssues = new java.util.HashMap<>();
+            Map<Long, Boolean> validationStatuses = new java.util.HashMap<>();
+            validatedRows += req.question().getCommentIds().size();
+            for (CategorizationResponse response : responses) {
+                for (CommentRow comment : response.getComments()) {
+                    ClassificationValidator.ValidationResult result = classificationValidator.validate(comment);
+                    boolean valid = result.valid() && !reconciliation.duplicateIds().contains(comment.getCommentId());
+                    validationStatuses.put(comment.getCommentId(), valid);
+                    if (valid) {
+                        successfulRows++;
+                    }
+                    if (!result.valid()) validationIssues.put(comment.getCommentId(), result.issues());
+                    for (CategoryCol category : comment.getCategories()) {
+                        if (category.getEvaluationType() != null) {
+                            String variable = classificationValidator.variableName(category.getEvaluationType());
+                            if (variable != null) category.setCode(classificationValidator.serializeCode(variable, category.getCode()));
+                        }
+                    }
+                }
             }
             // Diagnostic logging: responses and processed counts
             int responsesCount = responses == null ? 0 : responses.size();
@@ -142,6 +163,22 @@ public class FileUploadController {
             }
             LOG.info("Batch starting at rowOffset=" + currentRowOffset + ": responses.count=" + responsesCount + ", comments.count=" + commentsCount);
             Input2xls input = Input2xls.fromCategorizationResponseList(responses, currentRowOffset);
+            validationStatuses.forEach((commentId, valid) -> input.markValidationStatus(
+                    Math.toIntExact(commentId), classificationValidator.variableCount(), valid));
+            validationIssues.forEach((commentId, issues) -> issues.stream()
+                    .forEach(issue -> {
+                        if (issue.columnIndex() >= 0) {
+                            input.markInvalid(Math.toIntExact(commentId), issue.columnIndex());
+                        } else {
+                            for (int column = 0; column < classificationValidator.variableCount(); column++) {
+                                input.markInvalid(Math.toIntExact(commentId), column);
+                            }
+                        }
+                    }));
+            reconciliation.missingIds().forEach(commentId -> input.markMissingResult(
+                    Math.toIntExact(commentId), classificationValidator.variableCount()));
+            reconciliation.duplicateIds().forEach(commentId -> input.markReviewStatus(
+                    Math.toIntExact(commentId), classificationValidator.variableCount(), "DUPLICATE_LLM_RESULT"));
             // Log Input2xls entries
             Enumeration<Integer> rowsDbg = input.getRowIndexes();
             StringBuilder sb = new StringBuilder();
@@ -166,6 +203,23 @@ public class FileUploadController {
             progressTracker.updateProgress(uploadId, currentRowOffset - rowOffset);
             LOG.info("Progress: " + (currentRowOffset - rowOffset) + ", Current row offset: " + currentRowOffset);
         }
+
+        ProjectProfile profile = profileLoader.getProfile();
+        String validationSuccessRate = validatedRows == 0 ? "N/A"
+                : String.format(java.util.Locale.ROOT, "%.2f%%", successfulRows * 100.0 / validatedRows);
+        Map<String, String> executionMetadata = new java.util.LinkedHashMap<>();
+        executionMetadata.put("Profile", profile.projectId() + "@" + profile.version());
+        executionMetadata.put("Profile ID", profile.projectId());
+        executionMetadata.put("Profile version", profile.version());
+        executionMetadata.put("Model", llmService.getModelName());
+        executionMetadata.put("Rows processed", String.valueOf(validatedRows));
+        executionMetadata.put("Rows passed validation", String.valueOf(successfulRows));
+        executionMetadata.put("Rows missing LLM result", String.valueOf(missingResultRows));
+        executionMetadata.put("Unexpected LLM result IDs", String.valueOf(unexpectedResultIds));
+        executionMetadata.put("Validation success rate", validationSuccessRate);
+        executionMetadata.put("Execution ID", String.valueOf(uploadId));
+        executionMetadata.put("Started at (UTC)", executionStartedAt.toString());
+        dr.writeExecutionMetadata(inputPath, outputPath, executionMetadata);
         
         // Return the written file as a download
         File result = new File(outputPath);

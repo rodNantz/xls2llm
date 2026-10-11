@@ -13,6 +13,8 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.poi.ss.usermodel.Cell;
@@ -20,6 +22,9 @@ import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.DefaultIndexedColorMap;
+import org.apache.poi.xssf.usermodel.XSSFColor;
+import org.apache.poi.xssf.usermodel.XSSFFont;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -299,6 +304,7 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 		try {
 			XSSFWorkbook workbook = new XSSFWorkbook(fis);
 			Sheet sheet = workbook.getSheetAt(0);
+			Map<Short, org.apache.poi.ss.usermodel.CellStyle> errorStyles = new HashMap<>();
 			
 			Enumeration<Integer> rIdxs = input.getRowIndexes();
 			while (rIdxs.hasMoreElements()) {
@@ -307,6 +313,7 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 				while (cIdxs.hasMoreElements()) {
 					int c = cIdxs.nextElement();
 					setContentIntoXls(sheet, r, c, input.getCellContent(r, c));
+					if (input.isInvalid(r, c)) markCellInvalid(workbook, sheet, r, c, errorStyles);
 				}		
 			}
 			File file = new File(xlsFileToChg);
@@ -342,6 +349,15 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 	        FileOutputStream outputStream = new FileOutputStream(xlsFileToChg)
 	    ){
 	        Sheet sheet = workbook.getSheetAt(0);
+	        Map<Short, org.apache.poi.ss.usermodel.CellStyle> errorStyles = new HashMap<>();
+	        if (input.hasMissingResults()) {
+	            Row header = sheet.getRow(0);
+	            if (header == null) header = sheet.createRow(0);
+	            int statusColumn = INI_CNT_COL + 6;
+	            Cell statusHeading = header.getCell(statusColumn);
+	            if (statusHeading == null) statusHeading = header.createCell(statusColumn, CellType.STRING);
+	            statusHeading.setCellValue("LLM result status");
+	        }
 	
 	        Enumeration<Integer> rIdxs = input.getRowIndexes();
 	        while (rIdxs.hasMoreElements()) {
@@ -350,6 +366,7 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 	            while (cIdxs.hasMoreElements()) {
 	                int c = cIdxs.nextElement();
 	                setContentIntoXls(sheet, r, c, input.getCellContent(r, c));
+	                if (input.isInvalid(r, c)) markCellInvalid(workbook, sheet, r, c, errorStyles);
 	            }
 	        }
 	
@@ -469,6 +486,63 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 		}
 		LOG.info("Setting cell at row: " + (rowNo+INI_NEXTLINES) + ", col: " + (cellNo+INI_CNT_COL) + " with value: " + value);
 		c.setCellValue(value);
+	}
+
+	@Override
+	public void writeExecutionMetadata(String sourceFile, String outputFile, Map<String, String> metadata) {
+		File output = new File(outputFile);
+		String workbookPath = output.exists() ? outputFile : sourceFile;
+		try (
+				InputStream input = getFileFromResourceAsStream(workbookPath);
+				XSSFWorkbook workbook = new XSSFWorkbook(input);
+				FileOutputStream stream = new FileOutputStream(outputFile)) {
+			Sheet sheet = workbook.getSheet("XLS2LLM");
+			if (sheet == null) sheet = workbook.createSheet("XLS2LLM");
+			else {
+				for (int rowIndex = sheet.getLastRowNum(); rowIndex >= 0; rowIndex--) {
+					Row row = sheet.getRow(rowIndex);
+					if (row != null) sheet.removeRow(row);
+				}
+			}
+
+			Row heading = sheet.createRow(0);
+			heading.createCell(0, CellType.STRING).setCellValue("Execution metadata");
+			int rowIndex = 1;
+			for (Map.Entry<String, String> entry : new LinkedHashMap<>(metadata).entrySet()) {
+				Row row = sheet.createRow(rowIndex++);
+				row.createCell(0, CellType.STRING).setCellValue(entry.getKey());
+				row.createCell(1, CellType.STRING).setCellValue(entry.getValue() == null ? "" : entry.getValue());
+			}
+			sheet.autoSizeColumn(0);
+			sheet.autoSizeColumn(1);
+			workbook.write(stream);
+		} catch (IOException e) {
+			throw new InputException(e);
+		}
+	}
+
+	private void markCellInvalid(Workbook workbook, Sheet sheet, int rowNo, int cellNo,
+			Map<Short, org.apache.poi.ss.usermodel.CellStyle> errorStyles) {
+		Cell cell = sheet.getRow(rowNo + INI_NEXTLINES).getCell(cellNo + INI_CNT_COL);
+		var sourceStyle = cell.getCellStyle();
+		var errorStyle = errorStyles.computeIfAbsent(sourceStyle.getIndex(), key -> {
+			var sourceFont = workbook.getFontAt(sourceStyle.getFontIndexAsInt());
+			var redFont = (XSSFFont) workbook.createFont();
+			redFont.setFontName(sourceFont.getFontName());
+			redFont.setFontHeight(sourceFont.getFontHeight());
+			redFont.setBold(sourceFont.getBold());
+			redFont.setItalic(sourceFont.getItalic());
+			redFont.setStrikeout(sourceFont.getStrikeout());
+			redFont.setTypeOffset(sourceFont.getTypeOffset());
+			redFont.setUnderline(sourceFont.getUnderline());
+			redFont.setCharSet(sourceFont.getCharSet());
+			redFont.setColor(new XSSFColor(new byte[] { (byte) 0xFF, 0x00, 0x00 }, new DefaultIndexedColorMap()));
+			var style = workbook.createCellStyle();
+			style.cloneStyleFrom(sourceStyle);
+			style.setFont(redFont);
+			return style;
+		});
+		cell.setCellStyle(errorStyle);
 	}
 
 	

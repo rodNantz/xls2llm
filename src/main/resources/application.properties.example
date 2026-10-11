@@ -1,5 +1,8 @@
 spring.application.name=xls2llm
 
+# Versioned project methodology/configuration profile (classpath: or file: resource)
+xls2llm.profile=${XLS2LLM_PROFILE:classpath:profiles/nordeste-eleicoes-2022/1.0.0.json}
+
 
 # OpenAI Production Configuration
 # Set these environment variables instead of hardcoding:
@@ -11,6 +14,14 @@ llm.openai.url=${LLM_OPENAI_URL:https://api.openai.com/v1}
 llm.openai.key=${LLM_OPENAI_KEY:}
 llm.openai.org=${LLM_OPENAI_ORG:}
 llm.openai.project=${LLM_OPENAI_PROJECT:}
+llm.model=${LLM_MODEL:gpt-4.1}
+
+# CLI mode (leave disabled for the web UI). Command-line arguments can override these:
+# xls2llm.cli.enabled=true
+# xls2llm.cli.input=src/main/resources/xls/amostra-1.xlsx
+# xls2llm.cli.output=target/amostra-1-classified.xlsx
+# xls2llm.cli.start-line=1
+# xls2llm.cli.row-limit=100
 
 # OpenAI Test Configuration (local testing)
 llm.openai.test.url=http://localhost:1234/v1
