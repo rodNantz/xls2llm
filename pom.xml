@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>es.rodrigonant.p2ai</groupId>
 	<artifactId>xls2llm</artifactId>
-	<version>0.0.2-SNAPSHOT</version>
+	<version>0.0.3</version>
 	<name>xls2llm</name>
 	<description>Reads Excel files to request mass prompts to LLM services.</description>
 	<url/>
