@@ -5,6 +5,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
@@ -25,6 +26,7 @@ public class ClassificationValidator {
         Map<CategoryType, ProjectProfile.Variable> byType = new EnumMap<>(CategoryType.class);
         Map<String, CategoryCol> values = new HashMap<>();
         List<Issue> issues = new ArrayList<>();
+        List<Issue> reviewReasons = new ArrayList<>();
         for (ProjectProfile.Variable variable : profile.variables()) byType.put(variable.evaluationType(), variable);
 
         if (comment.getCategories() != null) {
@@ -51,13 +53,16 @@ public class ClassificationValidator {
         }
 
 		if (comment.getJustification() == null || comment.getJustification().isBlank()) {
-			issues.add(new Issue("", "Required justification is missing", -1));
+			reviewReasons.add(new Issue("", "Justificativa ausente", -1));
 		}
 		if (comment.getTriggerSpans() == null) {
-			issues.add(new Issue("", "Required triggerSpans list is missing", -1));
+			reviewReasons.add(new Issue("", "Lista triggerSpans ausente", -1));
 		}
 		if (comment.isAmbiguous()) {
-			issues.add(new Issue("", "Human review required: " + comment.getReviewReason(), -1));
+			String reason = comment.getReviewReason() == null || comment.getReviewReason().isBlank()
+					? "ambiguidade sinalizada pelo modelo"
+					: "ambiguidade sinalizada pelo modelo: " + comment.getReviewReason();
+			reviewReasons.add(new Issue("", reason, -1));
 		}
 
         for (ProjectProfile.Variable variable : profile.variables()) {
@@ -84,7 +89,7 @@ public class ClassificationValidator {
             }
         }
 
-        return new ValidationResult(comment.getCommentId(), List.copyOf(issues));
+        return new ValidationResult(comment.getCommentId(), List.copyOf(issues), List.copyOf(reviewReasons));
     }
 
     public String serializeCode(String variableName, String code) {
@@ -102,7 +107,16 @@ public class ClassificationValidator {
                 .findFirst().orElse(null);
     }
 
-	public int variableCount() { return profileLoader.getProfile().variables().size(); }
+    public int variableCount() { return profileLoader.getProfile().variables().size(); }
+
+    public static String summarizeIssues(List<Issue> issues) {
+        if (issues == null || issues.isEmpty()) return "";
+        return issues.stream()
+                .map(issue -> issue.variable() == null || issue.variable().isBlank()
+                        ? issue.message()
+                        : issue.variable() + ": " + issue.message())
+                .collect(Collectors.joining("; "));
+    }
 
     private boolean matchesTrigger(ProjectProfile profile, String trigger, String code) {
         if (profile.notApplicableAliases().contains(trigger)) {
@@ -113,7 +127,9 @@ public class ClassificationValidator {
 
     public record Issue(String variable, String message, int columnIndex) {}
 
-    public record ValidationResult(long commentId, List<Issue> issues) {
-        public boolean valid() { return issues.isEmpty(); }
+    public record ValidationResult(long commentId, List<Issue> issues, List<Issue> reviewReasons) {
+        public boolean valid() { return issues.isEmpty() && reviewReasons.isEmpty(); }
+        public boolean hasHardErrors() { return !issues.isEmpty(); }
+        public boolean requiresReview() { return !reviewReasons.isEmpty(); }
     }
 }

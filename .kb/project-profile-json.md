@@ -45,25 +45,25 @@ Recomenda-se criar um novo arquivo para cada versão metodológica, em vez de su
 {
   "projectId": "meu-projeto",
   "version": "1.1.0",
-  "model": "gpt-4.1",
+  "model": "gpt-6-luna",
   "source": "caminho/para/o-codebook.md",
   "instructions": "Instruções metodológicas permanentes para o modelo.",
   "variables": [
     {
       "name": "V1",
       "evaluationType": "V1ALT",
-      "codes": ["00", "01"],
+      "codes": ["0", "1"],
       "notApplicable": true
     }
   ],
-  "notApplicableAliases": ["99", "999"],
+  "notApplicableAliases": ["9"],
   "notApplicableOutput": {
-    "V1": "99"
+    "V1": "9"
   },
   "dependencies": [
     {
       "whenVariable": "V1",
-      "whenCode": "00",
+      "whenCode": "0",
       "requireVariable": "V1.1",
       "requiredSemantic": "CLASSIFIED"
     }
@@ -83,7 +83,7 @@ Os nomes dos campos e os valores de `evaluationType` e `requiredSemantic` difere
 | `source` | texto | Não | Referência documental do codebook. É informativa; o aplicativo não carrega nem incorpora automaticamente o arquivo indicado. |
 | `instructions` | texto | Sim | Instruções estáveis do projeto, concatenadas às instruções da planilha e enviadas no contexto de sistema do LLM. |
 | `variables` | lista de variáveis | Sim | Define os nomes, os tipos internos, os domínios aceitos e se cada variável admite o estado “não se aplica”. |
-| `notApplicableAliases` | lista de textos | Sim | Representações numéricas que significam o mesmo estado semântico `NOT_APPLICABLE`, como `99` e `999`. |
+| `notApplicableAliases` | lista de textos | Sim | Representação numérica que significa o estado semântico `NOT_APPLICABLE`: `9`. |
 | `notApplicableOutput` | objeto texto → texto | Sim | Representação que será escrita na planilha de saída para cada variável. A chave é o `name` da variável. |
 | `dependencies` | lista de dependências | Sim | Regras condicionais entre variáveis, verificadas pelo validador local. Use `[]` quando não houver dependências. |
 
@@ -95,26 +95,26 @@ Cada objeto em `variables` tem esta forma:
 {
   "name": "V1.1",
   "evaluationType": "V1_1ALT",
-  "codes": ["01", "02", "03", "04", "05"],
+  "codes": ["1", "2", "3", "4", "5"],
   "notApplicable": true
 }
 ```
 
 - `name`: nome lógico usado nas dependências e em `notApplicableOutput`. Deve corresponder à variável e à coluna pretendidas.
 - `evaluationType`: tipo interno usado para identificar a categoria retornada pelo LLM e mapeá-la à coluna. Deve ser um dos valores definidos por `CategoryType`: `V1ALT`, `V1_1ALT`, `V1_2ALT`, `V2ALT`, `V2_1ALT` ou `V3ALT`.
-- `codes`: lista permitida de códigos ordinários. Configure todos como **strings**, por exemplo `"00"`; assim, zeros à esquerda não são removidos. O validador compara os códigos exatamente como strings.
+- `codes`: lista permitida de códigos ordinários. Configure todos como **strings de um dígito**, por exemplo `"0"`; o validador compara os códigos exatamente como strings.
 - `notApplicable`: quando `true`, a variável também aceita qualquer código configurado em `notApplicableAliases`. Quando `false`, os aliases não são aceitos para essa variável.
 
 O perfil padrão associa as variáveis desta forma:
 
 | `name` | `evaluationType` | Domínio ordinário padrão | Aceita não aplicável |
 |---|---|---|---:|
-| `V1` | `V1ALT` | `00`, `01` | Sim |
-| `V1.1` | `V1_1ALT` | `01`–`05` | Sim |
-| `V1.2` | `V1_2ALT` | `01`–`04` | Sim |
-| `V2` | `V2ALT` | `00`, `01` | Não |
-| `V2.1` | `V2_1ALT` | `00`–`07` | Sim |
-| `V3` | `V3ALT` | `00`–`02` | Não |
+| `V1` | `V1ALT` | `0`, `1` | Sim |
+| `V1.1` | `V1_1ALT` | `1`–`5` | Sim |
+| `V1.2` | `V1_2ALT` | `1`–`4` | Sim |
+| `V2` | `V2ALT` | `0`, `1` | Não |
+| `V2.1` | `V2_1ALT` | `0`–`7` | Sim |
+| `V3` | `V3ALT` | `0`–`2` | Não |
 
 O domínio indicado por `codes` prevalece. Se uma categoria devolver valor fora do domínio, a classificação é preservada na planilha, marcada para revisão e contabilizada como falha de validação.
 
@@ -123,17 +123,17 @@ O domínio indicado por `codes` prevalece. Se uma categoria devolver valor fora 
 `notApplicableAliases` declara os códigos que têm o mesmo significado de negócio:
 
 ```json
-"notApplicableAliases": ["99", "999"]
+"notApplicableAliases": ["9"]
 ```
 
-Na validação e nas dependências, `99` e `999` são tratados como o mesmo estado semântico `NOT_APPLICABLE`. Ao escrever o arquivo de saída, `notApplicableOutput` escolhe a representação persistida por variável:
+Na validação e nas dependências, `9` é tratado como o estado semântico `NOT_APPLICABLE`. Ao escrever o arquivo de saída, `notApplicableOutput` escolhe a representação persistida por variável:
 
 ```json
 "notApplicableOutput": {
-  "V1": "99",
-  "V1.1": "999",
-  "V1.2": "999",
-  "V2.1": "999"
+  "V1": "9",
+  "V1.1": "9",
+  "V1.2": "9",
+  "V2.1": "9"
 }
 ```
 
@@ -146,7 +146,7 @@ Cada dependência declara uma condição de origem e o estado semântico exigido
 ```json
 {
   "whenVariable": "V1",
-  "whenCode": "00",
+  "whenCode": "0",
   "requireVariable": "V1.1",
   "requiredSemantic": "CLASSIFIED"
 }
@@ -159,7 +159,7 @@ Cada dependência declara uma condição de origem e o estado semântico exigido
   - `CLASSIFIED`: o valor de destino deve pertencer a `codes` dessa variável e não pode ser um alias de não aplicável.
   - `NOT_APPLICABLE`: o valor de destino deve pertencer a `notApplicableAliases`.
 
-Exemplo: `V1=00` exige que `V1.1` seja classificada e que `V1.2` seja não aplicável. Uma dependência não define códigos novos; os códigos aceitos continuam sendo os definidos na variável de destino.
+Exemplo: `V1=0` exige que `V1.1` seja classificada e que `V1.2` seja não aplicável. Uma dependência não define códigos novos; os códigos aceitos continuam sendo os definidos na variável de destino.
 
 ## Instruções metodológicas e saída estruturada
 
@@ -170,7 +170,7 @@ O formato da resposta estruturada também exige `commentId`, `categories`, `just
 O modelo efetivamente usado é definido separadamente:
 
 ```text
-llm.model=gpt-4.1
+llm.model=gpt-6-luna
 ```
 
 Pode ser sobrescrito por `LLM_MODEL` ou por `--llm.model=gpt-5-mini` na linha de comando. O campo JSON `model` não substitui essa configuração.
@@ -192,7 +192,7 @@ Resultado fora do domínio ou com regra inconsistente não é corrigido silencio
 ## Recomendações ao editar
 
 - Crie um arquivo novo para cada mudança metodológica e incremente `version`.
-- Preserve códigos como strings: use `"00"`, não `0`.
+- Preserve códigos como strings: use `"0"`, não `0`.
 - Garanta que cada `evaluationType` seja único e exista no enum `CategoryType`.
 - Garanta que os nomes referenciados por dependências existam em `variables`.
 - Configure todos os códigos de não aplicável em `notApplicableAliases` e escolha explicitamente o formato de saída de cada variável aplicável.

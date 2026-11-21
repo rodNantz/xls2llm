@@ -52,6 +52,10 @@ public class CommentRow {
 		return "CommentRow{" +
 				"commentId=" + commentId +
 				", categories=" + categories +
+				", justification='" + justification + '\'' +
+				", triggerSpans=" + triggerSpans +
+				", ambiguous=" + ambiguous +
+				", reviewReason='" + reviewReason + '\'' +
 				'}';
 	}
 }

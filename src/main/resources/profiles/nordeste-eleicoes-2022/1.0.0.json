@@ -1,32 +1,34 @@
 {
   "projectId": "nordeste-eleicoes-2022",
   "version": "1.0.0",
-  "model": "gpt-4.1",
+  "model": "gpt-6-luna",
+  "title": "Codificação sobre o Nordeste e Nordestinos — Eleições Presidenciais 2022",
+  "description": "Classificação de comentários sobre o Nordeste e nordestinos no contexto das eleições presidenciais brasileiras de 2022.",
   "source": ".opencode/skills/analise-conteudo-nordeste-eleicoes-2022/referencias/codebook-operacional.md",
-  "instructions": "Classifique cada comentário individualmente segundo as variáveis e o codebook deste projeto. Preserve os commentId recebidos, retorne exatamente um resultado para cada ID, sem duplicar nem omitir. Para cada resultado, inclua justification curta, triggerSpans (lista, vazia se não houver trecho gatilho), ambiguous e reviewReason (nulo se não houver motivo de revisão). Não infira apoio político: ser contra um candidato não significa apoiar o outro. Use códigos como strings, mantendo zeros à esquerda. V1.1 só se aplica quando V1=00; V1.2 só se aplica quando V1=01. V2.1 só se aplica quando V2=01. Para variáveis não aplicáveis, use o estado não aplicável configurado no perfil. Responda apenas no schema estruturado solicitado.",
+  "instructions": "Classifique cada comentário individualmente segundo as variáveis e o codebook deste projeto. Preserve os commentId recebidos, retorne exatamente um resultado para cada ID, sem duplicar nem omitir. Para cada resultado, inclua justification curta, triggerSpans (lista, vazia se não houver trecho gatilho), ambiguous e reviewReason (nulo se não houver motivo de revisão). Não infira apoio político: ser contra um candidato não significa apoiar o outro. Retorne todos os códigos como strings de um único dígito, sem zeros à esquerda: use 0 para 00, 1 para 01, 2 para 02 e assim por diante; use 9 para não aplicável. V1.1 só se aplica quando V1=0; V1.2 só se aplica quando V1=1. V2.1 só se aplica quando V2=1. Para variáveis não aplicáveis, use 9. Responda apenas no schema estruturado solicitado.",
   "variables": [
-    { "name": "V1", "evaluationType": "V1ALT", "codes": ["00", "01"], "notApplicable": true },
-    { "name": "V1.1", "evaluationType": "V1_1ALT", "codes": ["01", "02", "03", "04", "05"], "notApplicable": true },
-    { "name": "V1.2", "evaluationType": "V1_2ALT", "codes": ["01", "02", "03", "04"], "notApplicable": true },
-    { "name": "V2", "evaluationType": "V2ALT", "codes": ["00", "01"], "notApplicable": false },
-    { "name": "V2.1", "evaluationType": "V2_1ALT", "codes": ["00", "01", "02", "03", "04", "05", "06", "07"], "notApplicable": true },
-    { "name": "V3", "evaluationType": "V3ALT", "codes": ["00", "01", "02"], "notApplicable": false }
+    { "name": "V1", "evaluationType": "V1ALT", "codes": ["0", "1"], "notApplicable": true },
+    { "name": "V1.1", "evaluationType": "V1_1ALT", "codes": ["1", "2", "3", "4", "5"], "notApplicable": true },
+    { "name": "V1.2", "evaluationType": "V1_2ALT", "codes": ["1", "2", "3", "4"], "notApplicable": true },
+    { "name": "V2", "evaluationType": "V2ALT", "codes": ["0", "1"], "notApplicable": false },
+    { "name": "V2.1", "evaluationType": "V2_1ALT", "codes": ["0", "1", "2", "3", "4", "5", "6", "7"], "notApplicable": true },
+    { "name": "V3", "evaluationType": "V3ALT", "codes": ["0", "1", "2"], "notApplicable": false }
   ],
-  "notApplicableAliases": ["99", "999"],
+  "notApplicableAliases": ["9"],
   "notApplicableOutput": {
-    "V1": "99",
-    "V1.1": "999",
-    "V1.2": "999",
-    "V2.1": "999"
+    "V1": "9",
+    "V1.1": "9",
+    "V1.2": "9",
+    "V2.1": "9"
   },
   "dependencies": [
-    { "whenVariable": "V1", "whenCode": "00", "requireVariable": "V1.1", "requiredSemantic": "CLASSIFIED" },
-    { "whenVariable": "V1", "whenCode": "00", "requireVariable": "V1.2", "requiredSemantic": "NOT_APPLICABLE" },
-    { "whenVariable": "V1", "whenCode": "01", "requireVariable": "V1.1", "requiredSemantic": "NOT_APPLICABLE" },
-    { "whenVariable": "V1", "whenCode": "01", "requireVariable": "V1.2", "requiredSemantic": "CLASSIFIED" },
-    { "whenVariable": "V1", "whenCode": "99", "requireVariable": "V1.1", "requiredSemantic": "NOT_APPLICABLE" },
-    { "whenVariable": "V1", "whenCode": "99", "requireVariable": "V1.2", "requiredSemantic": "NOT_APPLICABLE" },
-    { "whenVariable": "V2", "whenCode": "00", "requireVariable": "V2.1", "requiredSemantic": "NOT_APPLICABLE" },
-    { "whenVariable": "V2", "whenCode": "01", "requireVariable": "V2.1", "requiredSemantic": "CLASSIFIED" }
+    { "whenVariable": "V1", "whenCode": "0", "requireVariable": "V1.1", "requiredSemantic": "CLASSIFIED" },
+    { "whenVariable": "V1", "whenCode": "0", "requireVariable": "V1.2", "requiredSemantic": "NOT_APPLICABLE" },
+    { "whenVariable": "V1", "whenCode": "1", "requireVariable": "V1.1", "requiredSemantic": "NOT_APPLICABLE" },
+    { "whenVariable": "V1", "whenCode": "1", "requireVariable": "V1.2", "requiredSemantic": "CLASSIFIED" },
+    { "whenVariable": "V1", "whenCode": "9", "requireVariable": "V1.1", "requiredSemantic": "NOT_APPLICABLE" },
+    { "whenVariable": "V1", "whenCode": "9", "requireVariable": "V1.2", "requiredSemantic": "NOT_APPLICABLE" },
+    { "whenVariable": "V2", "whenCode": "0", "requireVariable": "V2.1", "requiredSemantic": "NOT_APPLICABLE" },
+    { "whenVariable": "V2", "whenCode": "1", "requireVariable": "V2.1", "requiredSemantic": "CLASSIFIED" }
   ]
 }

@@ -2,6 +2,8 @@ package es.rodrigonant.p2ai.xls2llm.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Question example:
@@ -26,6 +28,8 @@ public class Question {
 	// linhas idx > 0
 	private List<String> nextLines;
 	private List<Long> commentIds;
+	private final Map<Long, String> secondPassModes = new HashMap<>();
+	private final Map<Long, String> secondPassContexts = new HashMap<>();
 
 	
 	public Question(String mainQuestion) {
@@ -63,6 +67,11 @@ public class Question {
 
 	public void addNextLine(String rowLine) {
 		addNextLine((long) commentIds.size(), rowLine);
+	}
+
+	public void setSecondPassContext(long commentId, String mode, String context) {
+		secondPassModes.put(commentId, mode);
+		if (context != null && !context.isBlank()) secondPassContexts.put(commentId, context);
 	}
 	
 	public String getRowZeroUserQuestion() {
@@ -153,15 +162,27 @@ public class Question {
 			for (String nLine: nextLines) {
 				if (lineLimit != null && i >= lineLimit)
 					break;
-				sb.append("{\"commentId\": ").append(commentIds.get(i)).append(", \"text\": \"")
-				  .append(nLine.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r"))
-				  .append("\"}");
+				long commentId = commentIds.get(i);
+				sb.append("{\"commentId\": ").append(commentId).append(", \"text\": \"")
+				  .append(escapeJson(nLine)).append("\"");
+				if (secondPassModes.containsKey(commentId)) {
+					sb.append(", \"secondPassMode\": \"").append(escapeJson(secondPassModes.get(commentId))).append("\"");
+					String context = secondPassContexts.get(commentId);
+					if (context != null) sb.append(", \"previousResultContext\": \"").append(escapeJson(context)).append("\"");
+				}
+				sb.append("}");
 				sb.append("\n\n");
 				i++;
 			}
 		}
 		
 		return sb.toString();
+	}
+
+	private String escapeJson(String value) {
+		if (value == null) return "";
+		return value.replace("\\", "\\\\").replace("\"", "\\\"")
+				.replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
 	}
 
 }

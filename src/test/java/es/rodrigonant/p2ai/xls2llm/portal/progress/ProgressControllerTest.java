@@ -33,14 +33,35 @@ class ProgressControllerTest {
     @Test
     @DisplayName("GET /api/upload/{uploadId}/progress returns progress JSON")
     void testGetProgressSuccess() throws Exception {
-        progressTracker.createProgress(1L, 100);
+        var progress = progressTracker.createProgress(1L, 100);
         progressTracker.updateProgress(1L, 50);
+        progress.addSecondPassTotal(2);
+        progress.completeSecondPassItems(1);
 
         mockMvc.perform(get("/api/upload/1/progress"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.current").value(50))
                 .andExpect(jsonPath("$.total").value(100))
-                .andExpect(jsonPath("$.percentage").value(50));
+                .andExpect(jsonPath("$.percentage").value(50))
+                .andExpect(jsonPath("$.secondPassCurrent").value(1))
+                .andExpect(jsonPath("$.secondPassTotal").value(2))
+                .andExpect(jsonPath("$.secondPassPercentage").value(50));
+    }
+
+    @Test
+    @DisplayName("GET /api/upload/{uploadId}/progress reports interruption and resume line")
+    void testInterruptedProgressIncludesResumeCheckpoint() throws Exception {
+        var progress = progressTracker.createProgress(5L, 100);
+        progress.setCheckpoint(40, 999, 1000);
+        progress.interrupt("Network failure");
+
+        mockMvc.perform(get("/api/upload/5/progress"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("INTERRUPTED"))
+                .andExpect(jsonPath("$.error").value("Network failure"))
+                .andExpect(jsonPath("$.current").value(40))
+                .andExpect(jsonPath("$.lastCompletedLine").value(999))
+                .andExpect(jsonPath("$.nextLine").value(1000));
     }
 
     @Test

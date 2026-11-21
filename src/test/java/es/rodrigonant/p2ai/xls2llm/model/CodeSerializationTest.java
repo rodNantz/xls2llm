@@ -15,6 +15,6 @@ public class CodeSerializationTest {
         ObjectMapper mapper = new ObjectMapper();
         Code code = new Code(0);
         String json = mapper.writeValueAsString(code);
-        assertEquals("\"00\"", json);
+        assertEquals("\"0\"", json);
     }
 }

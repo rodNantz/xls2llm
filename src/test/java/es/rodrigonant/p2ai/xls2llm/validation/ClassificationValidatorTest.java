@@ -15,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategoryCol;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategoryType;
+import es.rodrigonant.p2ai.xls2llm.model.classification.CategorizationResponse;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CommentRow;
 
 class ClassificationValidatorTest {
@@ -32,25 +33,76 @@ class ClassificationValidatorTest {
 
     @Test
     void validatesDomainsAndDependenciesAndSerializesNotApplicableByVariable() {
-        CommentRow valid = comment("00", "02", "999", "00", "999", "00");
+        CommentRow valid = comment("0", "2", "9", "0", "9", "0");
         assertTrue(validator.validate(valid).valid());
-        assertEquals("999", validator.serializeCode("V1.1", "99"));
-        assertEquals("99", validator.serializeCode("V1", "999"));
+        assertEquals("9", validator.serializeCode("V1.1", "9"));
+        assertEquals("9", validator.serializeCode("V1", "9"));
 
-        CommentRow inconsistent = comment("00", "02", "01", "00", "999", "00");
+        CommentRow presentWithOtherTarget = comment("0", "2", "9", "1", "0", "0");
+        assertTrue(validator.validate(presentWithOtherTarget).valid());
+
+        CommentRow inconsistent = comment("0", "2", "1", "0", "9", "0");
         ClassificationValidator.ValidationResult result = validator.validate(inconsistent);
         assertFalse(result.valid());
         assertTrue(result.issues().stream().anyMatch(issue -> issue.variable().equals("V1.2")));
 
-        CommentRow invalidDomain = comment("00", "88", "999", "00", "999", "00");
+        CommentRow invalidDomain = comment("0", "8", "9", "0", "9", "0");
         assertTrue(validator.validate(invalidDomain).issues().stream()
                 .anyMatch(issue -> issue.message().contains("outside the configured domain")));
 
-		CommentRow ambiguous = comment("00", "02", "999", "00", "999", "00");
+		CommentRow ambiguous = comment("0", "2", "9", "0", "9", "0");
 		ambiguous.setAmbiguous(true);
 		ambiguous.setReviewReason("Conflicting interpretations");
-		assertTrue(validator.validate(ambiguous).issues().stream()
-				.anyMatch(issue -> issue.message().contains("Human review required")));
+		ClassificationValidator.ValidationResult ambiguousResult = validator.validate(ambiguous);
+		assertTrue(ambiguousResult.requiresReview());
+		assertFalse(ambiguousResult.hasHardErrors());
+		assertTrue(ambiguousResult.reviewReasons().stream()
+				.anyMatch(issue -> issue.message().contains("Conflicting interpretations")));
+	}
+
+    @Test
+    void acceptsCorrectClassificationForVemNordesteSalvaAGenteComment() {
+        // @nordeste131 @jairbolsonaro VEM NORDESTEEE!!!! SALVA A GENTEEEE
+        CommentRow comment = comment("1", "9", "1", "0", "9", "0");
+
+        ClassificationValidator.ValidationResult result = validator.validate(comment);
+
+        assertTrue(result.valid(), () -> "Expected valid classification, got issues: " + result.issues());
+    }
+
+    @Test
+    void treatsMissingJustificationAndTriggerSpansAsReviewWarningsRatherThanHardErrors() {
+        CommentRow comment = comment("1", "9", "1", "0", "9", "0");
+        comment.setJustification(null);
+        comment.setTriggerSpans(null);
+
+        ClassificationValidator.ValidationResult result = validator.validate(comment);
+
+        assertFalse(result.valid());
+        assertFalse(result.hasHardErrors());
+        assertTrue(result.requiresReview());
+        assertEquals(2, result.reviewReasons().size());
+    }
+
+    @Test
+    void parsesAndValidatesSingleDigitCodesInCategoryResponseJson() throws Exception {
+        String json = """
+                {"comments":[{"commentId":5,"categories":[
+                  {"id":1,"evaluationType":"V1ALT","code":"0"},
+                  {"id":1.1,"evaluationType":"V1_1ALT","code":"2"},
+                  {"id":1.2,"evaluationType":"V1_2ALT","code":"9"},
+                  {"id":2,"evaluationType":"V2ALT","code":"1"},
+                  {"id":2.1,"evaluationType":"V2_1ALT","code":"0"},
+                  {"id":3,"evaluationType":"V3ALT","code":"0"}
+                ],"justification":"Supported by the comment text.","triggerSpans":[],"ambiguous":false,"reviewReason":null}]}
+                """;
+
+        CategorizationResponse response = new ObjectMapper().readValue(json, CategorizationResponse.class);
+        CommentRow comment = response.getComments().get(0);
+
+        assertEquals("1", comment.getCategories().get(3).getCode());
+        assertEquals("0", comment.getCategories().get(4).getCode());
+        assertTrue(validator.validate(comment).valid());
     }
 
     private CommentRow comment(String v1, String v11, String v12, String v2, String v21, String v3) {

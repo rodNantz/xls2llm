@@ -9,6 +9,8 @@ public record ProjectProfile(
         String projectId,
         String version,
         String model,
+        String title,
+        String description,
         String source,
         String instructions,
         List<Variable> variables,

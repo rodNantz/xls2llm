@@ -31,7 +31,7 @@ public abstract class BaseService implements LLMService {
 	protected String baseUrl;
 	@Autowired
 	private ProjectProfileLoader profileLoader;
-	@Value("${llm.model:gpt-4.1}")
+	@Value("${llm.model:gpt-6-luna}")
 	private String modelName;
 	private static final Logger LOG = LoggerFactory.getLogger(BaseService.class);
 	

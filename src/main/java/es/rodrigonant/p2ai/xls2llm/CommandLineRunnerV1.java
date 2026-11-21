@@ -22,6 +22,7 @@ import es.rodrigonant.p2ai.xls2llm.model.Request2LLM;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategorizationResponse;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CategoryCol;
 import es.rodrigonant.p2ai.xls2llm.model.classification.CommentRow;
+import es.rodrigonant.p2ai.xls2llm.model.classification.ClassificationStatus;
 import es.rodrigonant.p2ai.xls2llm.validation.ClassificationValidator;
 import es.rodrigonant.p2ai.xls2llm.validation.ProjectProfile;
 import es.rodrigonant.p2ai.xls2llm.validation.ProjectProfileLoader;
@@ -112,15 +113,40 @@ public class CommandLineRunnerV1 implements ApplicationRunner {
                         + ", unexpected=" + reconciliation.unexpectedIds());
             }
             Map<Long, List<ClassificationValidator.Issue>> issuesByComment = new HashMap<>();
+            Map<Long, ClassificationStatus> validationStatuses = new HashMap<>();
+            Map<Long, String> validationReasons = new HashMap<>();
             validatedRows += request.question().getCommentIds().size();
 
             for (CategorizationResponse response : responses) {
                 for (CommentRow comment : response.getComments()) {
                     ClassificationValidator.ValidationResult result = validator.validate(comment);
-                    if (result.valid() && !reconciliation.duplicateIds().contains(comment.getCommentId())) {
+                    boolean duplicate = reconciliation.duplicateIds().contains(comment.getCommentId());
+                    ClassificationStatus status = result.hasHardErrors() ? ClassificationStatus.INVALID
+                            : result.requiresReview() ? ClassificationStatus.REVIEW : ClassificationStatus.VALID;
+                    String reason = result.hasHardErrors()
+                            ? ClassificationValidator.summarizeIssues(result.issues()) : "";
+                    if (result.requiresReview()) {
+                        reason = appendReason(reason,
+                                "Revisão: " + ClassificationValidator.summarizeIssues(result.reviewReasons()));
+                    }
+                    if (duplicate) {
+                        status = ClassificationStatus.DUPLICATE_LLM_RESULT;
+                        reason = appendReason(reason, "Resposta duplicada para commentId=" + comment.getCommentId());
+                    }
+                    validationStatuses.put(comment.getCommentId(), status);
+                    if (!reason.isBlank()) validationReasons.put(comment.getCommentId(), reason);
+
+                    if (status == ClassificationStatus.VALID) {
                         successfulRows++;
                     }
-                    else issuesByComment.put(comment.getCommentId(), result.issues());
+                    if (result.hasHardErrors()) issuesByComment.put(comment.getCommentId(), result.issues());
+                    if (status != ClassificationStatus.VALID) {
+                        System.err.println("Validation detail: commentId=" + comment.getCommentId()
+                                + ", status=" + status + ", justification=" + comment.getJustification()
+                                + ", triggerSpans=" + comment.getTriggerSpans() + ", ambiguous=" + comment.isAmbiguous()
+                                + ", reviewReason=" + comment.getReviewReason() + ", hardErrors=" + result.issues()
+                                + ", reviewWarnings=" + result.reviewReasons());
+                    }
 
                     for (CategoryCol category : comment.getCategories()) {
                         if (category.getEvaluationType() == null) continue;
@@ -133,6 +159,8 @@ public class CommandLineRunnerV1 implements ApplicationRunner {
             }
 
             Input2xls output = Input2xls.fromCategorizationResponseList(responses, 0);
+            validationStatuses.forEach((commentId, status) -> output.markValidationStatus(
+                    Math.toIntExact(commentId), validator.variableCount(), status, validationReasons.get(commentId)));
             issuesByComment.forEach((commentId, issues) -> issues.forEach(issue -> {
                 if (issue.columnIndex() >= 0) {
                     output.markInvalid(Math.toIntExact(commentId), issue.columnIndex());
@@ -145,7 +173,8 @@ public class CommandLineRunnerV1 implements ApplicationRunner {
             reconciliation.missingIds().forEach(commentId -> output.markMissingResult(
                     Math.toIntExact(commentId), validator.variableCount()));
             reconciliation.duplicateIds().forEach(commentId -> output.markReviewStatus(
-                    Math.toIntExact(commentId), validator.variableCount(), "DUPLICATE_LLM_RESULT"));
+                    Math.toIntExact(commentId), validator.variableCount(), ClassificationStatus.DUPLICATE_LLM_RESULT,
+                    "Resposta duplicada para commentId=" + commentId));
 
             documents.writeDocument(wroteOutput ? resolvedOutput : inputPath, resolvedOutput, output);
             wroteOutput = true;
@@ -181,6 +210,12 @@ public class CommandLineRunnerV1 implements ApplicationRunner {
         int rowLimit = Integer.parseInt(value);
         if (rowLimit < 1) throw new IllegalArgumentException("xls2llm.cli.row-limit must be positive");
         return rowLimit;
+    }
+
+    private String appendReason(String current, String addition) {
+        if (current == null || current.isBlank()) return addition;
+        if (addition == null || addition.isBlank()) return current;
+        return current + "; " + addition;
     }
 
     private String defaultOutputPath(String source) {

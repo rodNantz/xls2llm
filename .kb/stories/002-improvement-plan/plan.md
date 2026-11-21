@@ -75,17 +75,17 @@ As regras devem ser configuração, não lógica fixa em Java. A planilha ou um 
 
 | Variável | Código | Descrição |
 |---|---|---|
-| V1 | 00 | Contra |
-| V1 | 01 | Favorável |
-| V1 | 99 | Não se aplica |
+| V1 | 0 | Contra |
+| V1 | 1 | Favorável |
+| V1 | 9 | Não se aplica |
 
 #### `ValidationRules`
 
 | Regra ID | Tipo | Variável | Condição ou expressão | Ação |
 |---|---|---|---|---|
-| R001 | domínio | V1 | `value in [00,01,99]` | vermelho/manual |
+| R001 | domínio | V1 | `value in [0,1,9]` | vermelho/manual |
 | R002 | domínio | V2 | `value in [0,1]` | vermelho/manual |
-| R003 | bloqueio | V1.1 | `V1=99 -> V1.1=999` | vermelho/manual |
+| R003 | bloqueio | V1.1 | `V1=9 -> V1.1=9` | vermelho/manual |
 
 #### `ProjectConfig`
 
@@ -124,7 +124,7 @@ O prompt-base deve permanecer idêntico e vir antes dos comentários. Isso permi
 
 Para documentos e exemplos, avaliar o uso da `Responses API` com `file_search` e um `vector store` por projeto. Alternativamente, implementar retrieval próprio com banco, JSONL ou índice vetorial. Em ambos os casos, recuperar somente as regras e exemplos relevantes para o lote.
 
-Regras críticas, como `V1 = 99 -> V1.1 = 999 e V1.2 = 999`, devem estar no prompt-base e ser aplicadas também pelo validador local. Não depender exclusivamente do retrieval para regras estruturais.
+Regras críticas, como `V1 = 9 -> V1.1 = 9 e V1.2 = 9`, devem estar no prompt-base e ser aplicadas também pelo validador local. Não depender exclusivamente do retrieval para regras estruturais.
 
 O contexto recuperado e os exemplos utilizados devem ser registrados nos logs, junto com a versão e o hash do perfil. Não enviar novamente a planilha inteira, respostas anteriores ou logs completos.
 
@@ -198,12 +198,12 @@ Retornar uma classificação por comentário, com IDs estáveis:
 {
   "commentId": 122,
   "codes": {
-    "V1": "00",
-    "V1.1": "02",
-    "V1.2": "999",
+    "V1": "0",
+    "V1.1": "2",
+    "V1.2": "9",
     "V2": "1",
-    "V2.1": "04",
-    "V3": "00"
+    "V2.1": "4",
+    "V3": "0"
   },
   "justification": "Ataque com foco em dependência econômica.",
   "trigger_spans": ["vive de benefícios"],
@@ -220,22 +220,22 @@ O validador deve ser independente do LLM e verificar campos obrigatórios, IDs, 
 
 ### 8.1. Semântica de “não se aplica”
 
-`99` e `999` representam o mesmo estado de negócio: `NOT_APPLICABLE`. Esse estado é semântico, não um código de categoria. A lógica de classificação, bloqueios e consistência deve comparar o estado normalizado, sem depender da representação numérica.
+`9` representa o estado de negócio `NOT_APPLICABLE`. Esse estado é semântico, não um código de categoria. A lógica de classificação, bloqueios e consistência deve comparar o estado normalizado, sem depender da representação numérica.
 
-A representação persistida deve ser definida pela configuração do projeto/coluna (`99` ou `999`). Ao importar, preservar o valor original para auditoria e normalizá-lo para validação; ao exportar, serializar `NOT_APPLICABLE` conforme a configuração de destino. Outros códigos de classificação permanecem strings de dois dígitos, preservando zeros à esquerda.
+A representação persistida usa `9` para não aplicável. Ao importar, preservar o valor original para auditoria e normalizá-lo para validação; ao exportar, serializar `NOT_APPLICABLE` conforme a configuração de destino. Todos os códigos de classificação são strings de um dígito (`0`–`9`).
 
 ### 8.2. Domínios atuais
 
-O domínio lógico usa strings de dois dígitos para códigos de classificação e `NOT_APPLICABLE` para o estado não aplicável:
+Todos os códigos são strings de um dígito. V2.1 usa `0` para “Outros”, e `9` representa “não se aplica”:
 
 | Coluna | Códigos válidos |
 |---|---|
-| V1 | `00`, `01`, `NOT_APPLICABLE` |
-| V1.1 | `01`, `02`, `03`, `04`, `05`, `NOT_APPLICABLE` |
-| V1.2 | `01`, `02`, `03`, `04`, `NOT_APPLICABLE` |
-| V2 | `00`, `01` |
-| V2.1 | `00`, `01`, `02`, `03`, `04`, `05`, `06`, `07`, `NOT_APPLICABLE` |
-| V3 | `00`, `01`, `02` |
+| V1 | `0`, `1`, `NOT_APPLICABLE` |
+| V1.1 | `1`, `2`, `3`, `4`, `5`, `NOT_APPLICABLE` |
+| V1.2 | `1`, `2`, `3`, `4`, `NOT_APPLICABLE` |
+| V2 | `0`, `1` |
+| V2.1 | `0` (outros), `1`, `2`, `3`, `4`, `5`, `6`, `7`, `NOT_APPLICABLE` |
+| V3 | `0`, `1`, `2` |
 
 Qualquer outro valor deve:
 
@@ -252,25 +252,25 @@ A cor vermelha indica erro; não é uma correção silenciosa.
 Classificar `V1` primeiro. Se:
 
 ```text
-V1 = 99
+V1 = 9
 ```
 
 então:
 
 ```text
-V1.1 = 999
-V1.2 = 999
+V1.1 = 9
+V1.2 = 9
 ```
 
-V1.1 e V1.2 não são relevantes nesse caso. Qualquer valor diferente de `999` é inconsistência. Preservar o valor bruto e registrar o valor esperado.
+V1.1 e V1.2 não são relevantes nesse caso. Qualquer valor diferente de `9` é inconsistência. Preservar o valor bruto e registrar o valor esperado.
 
 ### 8.4. Dependências padrão
 
-- `V1 = 00` exige V1.1 válido e `V1.2 = 999`;
-- `V1 = 01` exige V1.2 válido e `V1.1 = 999`;
-- `V1 = 99` exige `V1.1 = 999` e `V1.2 = 999`;
-- `V2 = 0` exige `V2.1 = 999`;
-- `V2 = 1` exige V2.1 diferente de `999`.
+- `V1 = 0` exige V1.1 válido e `V1.2 = 9`;
+- `V1 = 1` exige V1.2 válido e `V1.1 = 9`;
+- `V1 = 9` exige `V1.1 = 9` e `V1.2 = 9`;
+- `V2 = "0"` exige `V2.1 = 9`;
+- `V2 = "1"` exige V2.1 diferente de `9`.
 
 Prioridade das regras:
 
@@ -310,7 +310,7 @@ Usos:
 
 - testar leitura e escrita;
 - verificar a preservação de textos, IDs e colunas;
-- testar `V1 = 99` e outras regras;
+- testar `V1 = 9` e outras regras;
 - criar exemplos few-shot;
 - comparar prompts e modelos;
 - detectar regressões;
@@ -345,7 +345,7 @@ Medir por variável:
 - acurácia, precisão, recall e macro-F1;
 - matriz de confusão;
 - taxa de ambiguidade e revisão humana;
-- taxa de `99` e `999`;
+- taxa de `9` e `9`;
 - divergências em relação ao gabarito.
 
 Medir também:
@@ -487,7 +487,7 @@ Antes de escrever, conferir quantidade, identidade, ausência e duplicidade dos 
 - respostas inválidas são rejeitadas ou reprocessadas;
 - domínios e dependências são validados automaticamente;
 - valores inválidos ficam vermelhos no XLSX;
-- `V1 = 99` força V1.1 e V1.2 para `999` e gera registro de validação;
+- `V1 = 9` força V1.1 e V1.2 para `9` e gera registro de validação;
 - prompts e respostas integrais são armazenados;
 - tokens, custo, qualidade e latência são medidos;
 - `test1-simple.xlsx` é usada como fixture principal dos testes manuais;
@@ -501,7 +501,7 @@ Antes de escrever, conferir quantidade, identidade, ausência e duplicidade dos 
 
 1. Perfil metodológico e configuração por projeto.
 2. IDs estáveis, saída estruturada e validação.
-3. Regra `V1 = 99` e pós-validação visual.
+3. Regra `V1 = 9` e pós-validação visual.
 4. Amostra dourada e métricas de qualidade/custo.
 5. Logs integrais e observabilidade.
 6. Retries e lotes por tokens.

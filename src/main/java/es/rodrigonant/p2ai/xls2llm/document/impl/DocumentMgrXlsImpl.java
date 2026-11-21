@@ -18,12 +18,15 @@ import java.util.LinkedHashMap;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.CellType;
+import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.DefaultIndexedColorMap;
 import org.apache.poi.xssf.usermodel.XSSFColor;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFFont;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
@@ -304,7 +307,8 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 		try {
 			XSSFWorkbook workbook = new XSSFWorkbook(fis);
 			Sheet sheet = workbook.getSheetAt(0);
-			Map<Short, org.apache.poi.ss.usermodel.CellStyle> errorStyles = new HashMap<>();
+			Map<Short, CellStyle> errorStyles = new HashMap<>();
+			Map<Short, CellStyle> reviewStyles = new HashMap<>();
 			
 			Enumeration<Integer> rIdxs = input.getRowIndexes();
 			while (rIdxs.hasMoreElements()) {
@@ -314,6 +318,7 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 					int c = cIdxs.nextElement();
 					setContentIntoXls(sheet, r, c, input.getCellContent(r, c));
 					if (input.isInvalid(r, c)) markCellInvalid(workbook, sheet, r, c, errorStyles);
+					else if (input.isForReview(r, c)) markCellForReview(workbook, sheet, r, c, reviewStyles);
 				}		
 			}
 			File file = new File(xlsFileToChg);
@@ -343,20 +348,28 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 
 	
 	public void writeDocument(String xlsFile, String xlsFileToChg, Input2xls input) {
-	    try (
+	    File destination = new File(xlsFileToChg);
+	    File tempFile = createCheckpointTempFile(destination);
+	    try {
+	      try (
 	        InputStream fis = getFileFromResourceAsStream(xlsFile);
 	        XSSFWorkbook workbook = new XSSFWorkbook(fis);
-	        FileOutputStream outputStream = new FileOutputStream(xlsFileToChg)
+	        FileOutputStream outputStream = new FileOutputStream(tempFile)
 	    ){
 	        Sheet sheet = workbook.getSheetAt(0);
-	        Map<Short, org.apache.poi.ss.usermodel.CellStyle> errorStyles = new HashMap<>();
-	        if (input.hasMissingResults()) {
+	        Map<Short, CellStyle> errorStyles = new HashMap<>();
+	        Map<Short, CellStyle> reviewStyles = new HashMap<>();
+	        if (input.hasValidationStatuses() || input.hasMissingResults()) {
 	            Row header = sheet.getRow(0);
 	            if (header == null) header = sheet.createRow(0);
 	            int statusColumn = INI_CNT_COL + 6;
+	            int reasonColumn = INI_CNT_COL + 7;
 	            Cell statusHeading = header.getCell(statusColumn);
 	            if (statusHeading == null) statusHeading = header.createCell(statusColumn, CellType.STRING);
-	            statusHeading.setCellValue("LLM result status");
+	            statusHeading.setCellValue("Validation status");
+	            Cell reasonHeading = header.getCell(reasonColumn);
+	            if (reasonHeading == null) reasonHeading = header.createCell(reasonColumn, CellType.STRING);
+	            reasonHeading.setCellValue("Validation reason");
 	        }
 	
 	        Enumeration<Integer> rIdxs = input.getRowIndexes();
@@ -367,14 +380,17 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 	                int c = cIdxs.nextElement();
 	                setContentIntoXls(sheet, r, c, input.getCellContent(r, c));
 	                if (input.isInvalid(r, c)) markCellInvalid(workbook, sheet, r, c, errorStyles);
+	                else if (input.isForReview(r, c)) markCellForReview(workbook, sheet, r, c, reviewStyles);
 	            }
 	        }
 	
 	        workbook.write(outputStream);
 	        outputStream.flush();
-	        LOG.info("Wrote to " + new File(xlsFileToChg).getAbsolutePath());
+	        }
+	        moveCheckpointIntoPlace(tempFile, destination);
+	        LOG.info("Wrote to " + destination.getAbsolutePath());
 	    } catch (IOException e) {
-	        e.printStackTrace();
+	        tempFile.delete();
 	        throw new InputException(e);
 	    }
 	}
@@ -491,11 +507,12 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 	@Override
 	public void writeExecutionMetadata(String sourceFile, String outputFile, Map<String, String> metadata) {
 		File output = new File(outputFile);
+		File tempFile = createCheckpointTempFile(output);
 		String workbookPath = output.exists() ? outputFile : sourceFile;
 		try (
 				InputStream input = getFileFromResourceAsStream(workbookPath);
 				XSSFWorkbook workbook = new XSSFWorkbook(input);
-				FileOutputStream stream = new FileOutputStream(outputFile)) {
+				FileOutputStream stream = new FileOutputStream(tempFile)) {
 			Sheet sheet = workbook.getSheet("XLS2LLM");
 			if (sheet == null) sheet = workbook.createSheet("XLS2LLM");
 			else {
@@ -517,12 +534,37 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 			sheet.autoSizeColumn(1);
 			workbook.write(stream);
 		} catch (IOException e) {
+			tempFile.delete();
+			throw new InputException(e);
+		}
+		try {
+			moveCheckpointIntoPlace(tempFile, output);
+		} catch (IOException e) {
+			tempFile.delete();
 			throw new InputException(e);
 		}
 	}
 
+	private File createCheckpointTempFile(File destination) {
+		try {
+			File parent = destination.getAbsoluteFile().getParentFile();
+			return Files.createTempFile(parent.toPath(), destination.getName() + ".", ".tmp").toFile();
+		} catch (IOException e) {
+			throw new InputException(e);
+		}
+	}
+
+	private void moveCheckpointIntoPlace(File tempFile, File destination) throws IOException {
+		try {
+			Files.move(tempFile.toPath(), destination.toPath(), StandardCopyOption.ATOMIC_MOVE,
+					StandardCopyOption.REPLACE_EXISTING);
+		} catch (java.nio.file.AtomicMoveNotSupportedException e) {
+			Files.move(tempFile.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING);
+		}
+	}
+
 	private void markCellInvalid(Workbook workbook, Sheet sheet, int rowNo, int cellNo,
-			Map<Short, org.apache.poi.ss.usermodel.CellStyle> errorStyles) {
+			Map<Short, CellStyle> errorStyles) {
 		Cell cell = sheet.getRow(rowNo + INI_NEXTLINES).getCell(cellNo + INI_CNT_COL);
 		var sourceStyle = cell.getCellStyle();
 		var errorStyle = errorStyles.computeIfAbsent(sourceStyle.getIndex(), key -> {
@@ -543,6 +585,21 @@ public class DocumentMgrXlsImpl implements DocumentManager {
 			return style;
 		});
 		cell.setCellStyle(errorStyle);
+	}
+
+	private void markCellForReview(Workbook workbook, Sheet sheet, int rowNo, int cellNo,
+			Map<Short, CellStyle> reviewStyles) {
+		Cell cell = sheet.getRow(rowNo + INI_NEXTLINES).getCell(cellNo + INI_CNT_COL);
+		var sourceStyle = cell.getCellStyle();
+		var reviewStyle = reviewStyles.computeIfAbsent(sourceStyle.getIndex(), key -> {
+			var style = (XSSFCellStyle) workbook.createCellStyle();
+			style.cloneStyleFrom(sourceStyle);
+			style.setFillForegroundColor(new XSSFColor(
+					new byte[] { (byte) 0xFF, (byte) 0xF2, (byte) 0xCC }, new DefaultIndexedColorMap()));
+			style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+			return style;
+		});
+		cell.setCellStyle(reviewStyle);
 	}
 
 	

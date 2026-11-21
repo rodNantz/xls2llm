@@ -8,10 +8,10 @@ import es.rodrigonant.p2ai.xls2llm.model.Code;
 
 @JsonFormat(shape = JsonFormat.Shape.OBJECT)
 public enum V1_2alt implements AlternativeI {
-	@JsonProperty("00: Orgulho pelo Nordeste")
-	_00_ORGULHO_PELO_NORDESTE("00", "Orgulho pelo Nordeste"),
-	@JsonProperty("01: Exaltação a Lula/PT")
-	_01_EXALTACAO_A_LULA_PT("01", "Exaltação a Lula/PT");
+	@JsonProperty("0: Orgulho pelo Nordeste")
+	_00_ORGULHO_PELO_NORDESTE("0", "Orgulho pelo Nordeste"),
+	@JsonProperty("1: Exaltação a Lula/PT")
+	_01_EXALTACAO_A_LULA_PT("1", "Exaltação a Lula/PT");
 	
 	public String code;
 	public String description;

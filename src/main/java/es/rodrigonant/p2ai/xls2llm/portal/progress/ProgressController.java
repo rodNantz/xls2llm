@@ -27,7 +27,9 @@ public class ProgressController {
         ProgressResponse response = new ProgressResponse(
             progress.getCurrState(),
             progress.getTotal(),
-            progress.getPercent()
+            progress.getPercent(), progress.getStatus(), progress.getError(),
+            progress.getLastCompletedLine(), progress.getNextLine(),
+            progress.getSecondPassCurrent(), progress.getSecondPassTotal(), progress.getSecondPassPercent()
         );
         
         return ResponseEntity.ok(response);

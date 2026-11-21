@@ -18,7 +18,7 @@ public class CategoryCol {
 	@JsonProperty
 	private CategoryType evaluationType;
 	@JsonProperty
-	@Pattern(regexp = "(?:\\d{2}|999)", message = "Code must be two digits or the configured 999 sentinel")
+	@Pattern(regexp = "\\d", message = "Code must be a single digit")
 	private String code;
 	@JsonProperty
 	private String description;

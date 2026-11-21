@@ -8,29 +8,27 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 @JsonSerialize(using = CodeSerializer.class)
 public class Code {
 	
-	private int[] codeArr = new int[2];
+	private int code;
 
 	/**
-	 * Construct from int (0-99 only)
+	 * Construct from int (0-9 only)
 	 */
 	public Code(int code) {
-		if (code < 0 || code > 99) {
-			throw new IllegalArgumentException("Code must be between 0 and 99");
+		if (code < 0 || code > 9) {
+			throw new IllegalArgumentException("Code must be between 0 and 9");
 		}
-		this.codeArr[0] = code / 10;
-		this.codeArr[1] = code % 10;
+		this.code = code;
 	}
 
 	/**
-	 * Construct from String (must be two digits)
+	 * Construct from String (must be one digit)
 	 */
 	@JsonCreator
 	public Code(String code) {
-		if (code == null || !code.matches("\\d{2}")) {
-			throw new IllegalArgumentException("Code string must be exactly two digits (00-99): " + code);
+		if (code == null || !code.matches("\\d")) {
+			throw new IllegalArgumentException("Code string must be exactly one digit (0-9): " + code);
 		}
-		this.codeArr[0] = code.charAt(0) - '0';
-		this.codeArr[1] = code.charAt(1) - '0';
+		this.code = Integer.parseInt(code);
 	}
 
 	/**
@@ -41,14 +39,14 @@ public class Code {
 	}
 	
 	@JsonIgnore
-	public int[] getCode() { 
-		return codeArr; 
+	public int getCode() {
+		return code;
 	}
 	
 	@Override
 	@JsonValue
 	public String toString() {
-		return String.format("%d%d", codeArr[0], codeArr[1]);
+		return Integer.toString(code);
 	}
 	
 	public static Code _00() {

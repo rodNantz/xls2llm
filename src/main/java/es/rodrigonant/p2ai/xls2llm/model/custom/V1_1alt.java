@@ -8,10 +8,10 @@ import es.rodrigonant.p2ai.xls2llm.model.Code;
 
 @JsonFormat(shape = JsonFormat.Shape.OBJECT)
 public enum V1_1alt implements AlternativeI {
-	@JsonProperty("00: Comportamentos estereotipados/reducionistas")
-	_00_COMPORTAMENTOS_ESTEREOTIPADOS_REDUCIONISTAS("00", "Comportamentos estereotipados/reducionistas"),
-	@JsonProperty("02: Econômico ou recursos materiais")
-	_02_ECONOMICO_OU_RECURSOS_MATERIAIS("02", "Econômico ou recursos materiais");
+	@JsonProperty("0: Comportamentos estereotipados/reducionistas")
+	_00_COMPORTAMENTOS_ESTEREOTIPADOS_REDUCIONISTAS("0", "Comportamentos estereotipados/reducionistas"),
+	@JsonProperty("2: Econômico ou recursos materiais")
+	_02_ECONOMICO_OU_RECURSOS_MATERIAIS("2", "Econômico ou recursos materiais");
 	
 	public String code;
 	public String description;
