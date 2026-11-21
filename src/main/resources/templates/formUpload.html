@@ -1,0 +1,406 @@
+<html xmlns:th="https://www.thymeleaf.org">
+<head>
+    <title th:text="${profileTitle}">Classification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="file"],
+        input[type="number"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        #clearBtn {
+            background-color: #6c757d;
+        }
+        #clearBtn:hover {
+            background-color: #5a6268;
+        }
+        #progressContainer {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        #progressContainer.active {
+            display: block;
+        }
+        #fileNameDisplay {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        #statusText {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+        progress {
+            width: 100%;
+            height: 30px;
+            border-radius: 4px;
+        }
+        #percentageText {
+            text-align: center;
+            margin-top: 8px;
+            font-weight: bold;
+            color: #007bff;
+            font-size: 18px;
+        }
+        .error {
+            color: #dc3545;
+            padding: 10px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+        .error.show {
+            display: block;
+        }
+        #progressDetails {
+            font-size: 12px;
+            color: #666;
+            margin-top: 8px;
+        }
+        #secondPassContainer { margin-top: 12px; }
+        #secondPassLabel { font-size: 12px; color: #555; margin-bottom: 4px; }
+        #secondPassDetails { font-size: 12px; color: #666; margin-top: 4px; }
+        .language-picker { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+        .language-picker label { margin: 0; }
+        .language-picker select { padding: 6px; }
+        .project-header { border-bottom: 1px solid #ddd; margin-bottom: 20px; padding-bottom: 12px; }
+        .project-header h2 { margin-bottom: 8px; }
+        .project-header p { color: #555; }
+        .project-header dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 10px; font-size: 13px; }
+        .project-header dt { font-weight: bold; color: #555; }
+        .project-header dd { margin: 0; overflow-wrap: anywhere; }
+        #progressContainer.interrupted { background-color: #fff3cd; border-color: #ffecb5; }
+        #progressContainer.completed { background-color: #d1e7dd; border-color: #badbcc; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="language-picker">
+        <label for="languageSelect" th:text="#{ui.language}">Language</label>
+        <select id="languageSelect" onchange="window.location.search='?lang='+this.value">
+            <option value="pt_BR" th:selected="${#locale.toString() == 'pt_BR'}" th:text="#{ui.language.portuguese}">Português</option>
+            <option value="en" th:selected="${#locale.language == 'en'}" th:text="#{ui.language.english}">English</option>
+        </select>
+    </div>
+    <header class="project-header">
+        <h2 th:text="${profileTitle}">Project title</h2>
+        <p th:if="${profile.description != null}" th:text="${profile.description}"></p>
+        <dl>
+            <dt th:text="#{ui.project.id}">Project ID</dt><dd th:text="${profile.projectId}"></dd>
+            <dt th:text="#{ui.project.model}">Model</dt><dd th:text="${profile.model}"></dd>
+        </dl>
+    </header>
+    <h2 th:text="#{ui.upload.heading}">Classify an Excel spreadsheet</h2>
+    <p th:text="#{ui.upload.secondPassInfo}"></p>
+    <form id="uploadForm" method="POST" enctype="multipart/form-data" action="/upload">
+        <div class="form-group">
+            <label for="file" th:text="#{ui.upload.file}">Excel file</label>
+            <input type="file" id="file" name="file" accept=".xlsx" required />
+        </div>
+        
+        <div class="form-group">
+            <label for="startLine" th:text="#{ui.upload.startLine}">Start line (optional)</label>
+            <input type="number" id="startLine" name="startLine" min="1" placeholder="1000" />
+            <small th:text="#{ui.upload.startLineHint}">One-based comment number</small>
+        </div>
+        
+        <div class="form-group">
+            <label for="rowLimit" th:text="#{ui.upload.rowLimit}">Maximum rows (optional)</label>
+            <input type="number" id="rowLimit" name="rowLimit" min="1" placeholder="100" />
+            <small th:text="#{ui.upload.rowLimitHint}">Leave blank to process all remaining comments</small>
+        </div>
+
+        <button type="submit" id="submitBtn" th:text="#{ui.upload.submit}">Upload and classify</button>
+        <button type="button" id="clearBtn" onclick="clearFormData()" th:text="#{ui.upload.clear}">Clear form</button>
+    </form>
+
+    <div id="progressContainer">
+        <div id="fileNameDisplay"></div>
+        <div id="statusText" th:text="#{ui.progress.processing}">Processing comments…</div>
+        <progress id="progressBar" value="0" max="100"></progress>
+        <div id="percentageText">0%</div>
+        <div id="progressDetails"></div>
+        <div id="secondPassContainer" hidden>
+            <div id="secondPassLabel" th:text="#{ui.progress.secondPass}">Second pass</div>
+            <progress id="secondPassBar" value="0" max="100"></progress>
+            <div id="secondPassDetails"></div>
+        </div>
+    </div>
+
+    <div class="error" id="errorDiv"></div>
+</div>
+
+<script th:inline="javascript">
+    const uiMessages = {
+        processing: /*[[#{ui.progress.processing}]]*/ 'Processing comments…',
+        initializing: /*[[#{ui.progress.initializing}]]*/ 'Preparing the spreadsheet…',
+        saved: /*[[#{ui.progress.saved}]]*/ '{0} of {1} comments saved',
+        secondPass: /*[[#{ui.progress.secondPassCount}]]*/ 'Second pass: {0} of {1} comments reviewed',
+        lastLine: /*[[#{ui.progress.lastLine}]]*/ 'Last completed comment: {0}',
+        interrupted: /*[[#{ui.progress.interrupted}]]*/ 'Processing interrupted',
+        partialDownload: /*[[#{ui.progress.partialDownload}]]*/ 'Partial spreadsheet downloaded',
+        completed: /*[[#{ui.progress.completed}]]*/ 'Processing complete',
+        failed: /*[[#{ui.progress.failed}]]*/ 'Upload failed',
+        selectFile: /*[[#{ui.error.selectFile}]]*/ 'Select an Excel file to continue.',
+        uploadError: /*[[#{ui.error.upload}]]*/ 'Upload failed ({0}). Please try again.',
+        resumeLine: /*[[#{ui.error.resumeLine}]]*/ 'Resume from comment {0}.'
+    };
+
+    function formatMessage(template, ...values) {
+        return values.reduce((text, value, index) => text.replace(`{${index}}`, value), template);
+    }
+
+    const uploadForm = document.getElementById('uploadForm');
+    const progressContainer = document.getElementById('progressContainer');
+    const fileNameDisplay = document.getElementById('fileNameDisplay');
+    const progressBar = document.getElementById('progressBar');
+    const percentageText = document.getElementById('percentageText');
+    const statusText = document.getElementById('statusText');
+    const submitBtn = document.getElementById('submitBtn');
+    const fileInput = document.getElementById('file');
+    const errorDiv = document.getElementById('errorDiv');
+    const progressDetails = document.getElementById('progressDetails');
+    const secondPassContainer = document.getElementById('secondPassContainer');
+    const secondPassBar = document.getElementById('secondPassBar');
+    const secondPassDetails = document.getElementById('secondPassDetails');
+
+    function renderSecondPassProgress(data) {
+        const total = data.secondPassTotal || 0;
+        const current = data.secondPassCurrent || 0;
+        secondPassContainer.hidden = total === 0;
+        secondPassBar.value = data.secondPassPercentage || 0;
+        secondPassDetails.textContent = formatMessage(uiMessages.secondPass, current, total);
+    }
+
+    let pollInterval = null;
+    let currentUploadId = null;
+
+    function generateUploadId() {
+        return Math.floor(Math.random() * 100000000);
+    }
+
+    function clearFormData() {
+        uploadForm.reset();
+        progressContainer.classList.remove('active');
+        errorDiv.classList.remove('show');
+        submitBtn.disabled = false;
+    }
+
+    async function pollProgress(uploadId) {
+        try {
+            const url = `/api/upload/${uploadId}/progress`;
+            const response = await fetch(url);
+            if (response.ok) {
+                const data = await response.json();
+                console.log('===== PROGRESS POLL SUCCESS ===== uploadId=' + uploadId + ', response:', data);
+                progressBar.value = data.percentage;
+                percentageText.textContent = data.percentage + '%';
+                progressDetails.textContent = formatMessage(uiMessages.saved, data.current, data.total) +
+                    (data.lastCompletedLine ? `; ${formatMessage(uiMessages.lastLine, data.lastCompletedLine)}` : '');
+                renderSecondPassProgress(data);
+                if (data.status === 'INTERRUPTED') {
+                    progressContainer.classList.add('interrupted');
+                    statusText.textContent = uiMessages.interrupted;
+                    errorDiv.textContent = `${data.error} ${formatMessage(uiMessages.resumeLine, data.nextLine)}`;
+                    errorDiv.classList.add('show');
+                    return false;
+                }
+                if (data.status === 'COMPLETED') {
+                    progressContainer.classList.add('completed');
+                    statusText.textContent = uiMessages.completed;
+                    return false;
+                }
+                return true;
+            } else if (response.status === 404) {
+                console.warn('===== PROGRESS 404 ===== uploadId=' + uploadId + ' not found, retrying...');
+                return true;
+            } else {
+                console.warn('===== PROGRESS ERROR ===== uploadId=' + uploadId + ', status=' + response.status + ', statusText=' + response.statusText);
+                return true;
+            }
+        } catch (error) {
+            console.warn('===== PROGRESS EXCEPTION ===== uploadId=' + uploadId + ', error:', error);
+            return true;
+        }
+    }
+
+    uploadForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        console.log('Form submission started, preventing default behavior');
+        errorDiv.classList.remove('show');
+
+        if (!fileInput.files || fileInput.files.length === 0) {
+            errorDiv.textContent = uiMessages.selectFile;
+            errorDiv.classList.add('show');
+            return;
+        }
+
+        const fileName = fileInput.files[0].name;
+        currentUploadId = generateUploadId();
+        console.log('===== UPLOAD INIT ===== Generated uploadId:', currentUploadId, 'Type:', typeof currentUploadId);
+
+        fileNameDisplay.textContent = fileName;
+        progressContainer.classList.add('active');
+        progressContainer.classList.remove('interrupted', 'completed');
+        submitBtn.disabled = true;
+        progressBar.value = 0;
+        percentageText.textContent = '0%';
+        statusText.textContent = uiMessages.processing;
+        progressDetails.textContent = uiMessages.initializing;
+        secondPassContainer.hidden = true;
+        secondPassBar.value = 0;
+        secondPassDetails.textContent = '';
+
+        // Start polling for progress immediately
+        pollInterval = setInterval(async () => {
+            const stillProcessing = await pollProgress(currentUploadId);
+            if (!stillProcessing) {
+                clearInterval(pollInterval);
+            }
+        }, 500);
+
+        try {
+            const formData = new FormData(uploadForm);
+            formData.append('uploadId', currentUploadId.toString());
+            console.log('===== FORM DATA ===== uploadId appended:', currentUploadId.toString());
+            console.log('Form fields: file=' + (formData.has('file') ? 'YES' : 'NO') + 
+                        ', startLine=' + (formData.get('startLine') || 'empty') + 
+                        ', rowLimit=' + (formData.get('rowLimit') || 'empty') + 
+                        ', uploadId=' + (formData.get('uploadId') || 'empty'));
+
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            clearInterval(pollInterval);
+            console.log('===== SERVER RESPONSE ===== status:', response.status, response.statusText);
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                
+                const contentDisposition = response.headers.get('content-disposition');
+                const fileNameMatch = contentDisposition ? contentDisposition.match(/filename="?([^"]+)"?/) : null;
+                const downloadFileName = fileNameMatch ? fileNameMatch[1] : 'result.xlsx';
+
+                const finalProgress = await fetch(`/api/upload/${currentUploadId}/progress`);
+                const finalData = finalProgress.ok ? await finalProgress.json() : null;
+                if (finalData) {
+                    progressBar.value = finalData.percentage;
+                    percentageText.textContent = finalData.percentage + '%';
+                    progressDetails.textContent = formatMessage(uiMessages.saved, finalData.current, finalData.total) +
+                        (finalData.lastCompletedLine ? `; ${formatMessage(uiMessages.lastLine, finalData.lastCompletedLine)}` : '');
+                    renderSecondPassProgress(finalData);
+                    if (finalData.status === 'INTERRUPTED') {
+                        progressContainer.classList.add('interrupted');
+                        statusText.textContent = uiMessages.partialDownload;
+                        errorDiv.textContent = finalData.error + ` ${formatMessage(uiMessages.resumeLine, finalData.nextLine)}`;
+                        errorDiv.classList.add('show');
+                    } else {
+                        progressContainer.classList.add('completed');
+                        statusText.textContent = uiMessages.completed;
+                    }
+                }
+
+                // Trigger download
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = downloadFileName;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                console.log('Download triggered for:', downloadFileName);
+
+                // Re-enable submit button after delay, keep form data for next upload
+                setTimeout(() => {
+                    submitBtn.disabled = false;
+                    progressContainer.classList.remove('active');
+                    console.log('===== UPLOAD COMPLETE ===== Form ready for next submission');
+                    // Do NOT reset form - keep parameters for user to reuse
+                }, 1000);
+            } else {
+                let errorMessage = formatMessage(uiMessages.uploadError, response.status);
+                try {
+                    const errorBody = await response.json();
+                    if (errorBody.message) {
+                        errorMessage = errorBody.message;
+                    }
+                } catch (_) {
+                    // Use the friendly fallback for responses without a JSON message.
+                }
+                throw new Error(errorMessage);
+            }
+        } catch (error) {
+            clearInterval(pollInterval);
+            console.error('===== ERROR ===== during upload:', error);
+            errorDiv.textContent = error.message;
+            errorDiv.classList.add('show');
+            submitBtn.disabled = false;
+            statusText.textContent = uiMessages.failed;
+            if (currentUploadId !== null) {
+                await pollProgress(currentUploadId);
+            }
+        }
+    });
+</script>
+</body>
+</html>
