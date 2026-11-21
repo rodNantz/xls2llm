@@ -20,7 +20,7 @@ $cli = @(
   '--xls2llm.cli.row-limit=100',
   '--llm.model=gpt-4.1'
 )
-java -jar target/xls2llm-0.0.3.jar $cli
+java -jar target/xls2llm-0.0.4.jar $cli
 ```
 
 Repeat with another model and output path, for example `--llm.model=gpt-5-mini` and `--xls2llm.cli.output=target/test1-gpt-5-mini.xlsx`. Both runs use the same configured OpenAI URL/key/org/project and methodology profile as the UI. CLI options override values from Spring configuration. `start-line` is one-based; omitting `row-limit` processes the remaining rows. If `output` is omitted, the runner creates a `-classified.xlsx` file beside the input.

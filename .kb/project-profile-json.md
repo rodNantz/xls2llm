@@ -27,7 +27,7 @@ $env:XLS2LLM_PROFILE = 'file:C:/configuracao/meu-perfil/1.1.0.json'
 Ou passe a propriedade diretamente ao iniciar a aplicação:
 
 ```powershell
-java -jar target/xls2llm-0.0.3.jar `
+java -jar target/xls2llm-0.0.4.jar `
   --xls2llm.profile=file:C:/configuracao/meu-perfil/1.1.0.json
 ```
 
